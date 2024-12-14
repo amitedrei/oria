@@ -1,13 +1,10 @@
 import uvicorn
 from fastapi import FastAPI
 from config import settings
+from data_transformers.route import router as data_transformers_router
 
 app = FastAPI()
-
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+app.include_router(data_transformers_router)
 
 
 def main():
