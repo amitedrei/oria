@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter
 
 from .models import (
@@ -18,6 +20,10 @@ async def text_to_embeddings(data: TextToEmbeddingsModel) -> EmbeddingsResponseM
 
 @router.post("/calculate-distance")
 async def get_distance(data: DistanceRequestModel) -> DistanceResponseModel:
-    embeddings1 = (await get_embeddings(TextToEmbeddingsModel(text=data.text1))).embeddings
-    embeddings2 = (await get_embeddings(TextToEmbeddingsModel(text=data.text2))).embeddings
-    return calculate_distance(embedding1=embeddings1, embedding2=embeddings2)
+    results = await asyncio.gather(
+        get_embeddings(TextToEmbeddingsModel(text=data.text1)),
+        get_embeddings(TextToEmbeddingsModel(text=data.text2)),
+    )
+    return calculate_distance(
+        embedding1=results[0].embeddings, embedding2=results[1].embeddings
+    )
