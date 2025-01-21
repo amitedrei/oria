@@ -7,4 +7,13 @@ class TextToEmbeddingsModel(BaseModel):
 
 class EmbeddingsResponseModel(BaseModel):
     text: str
-    embeddings: list[list[float]]
+    embeddings: list[float]
+
+
+class DistanceRequestModel(BaseModel):
+    text1: str
+    text2: str
+
+
+class DistanceResponseModel(BaseModel):
+    similarity: float
