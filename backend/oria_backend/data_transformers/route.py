@@ -1,5 +1,4 @@
 import asyncio
-
 from fastapi import APIRouter
 
 from .models import (
@@ -7,11 +6,13 @@ from .models import (
     DistanceResponseModel,
     EmbeddingsResponseModel,
     TextToEmbeddingsModel,
+    TextToEmotionsModel,
+    EmotionsResponseModel
 )
-from .service import calculate_distance, get_embeddings
+from .service import calculate_distance, get_embeddings, get_text_emotion
+
 
 router = APIRouter(prefix="/data-transformers", tags=["Data Transformers"])
-
 
 @router.post("/embeddings")
 async def text_to_embeddings(data: TextToEmbeddingsModel) -> EmbeddingsResponseModel:
@@ -27,3 +28,8 @@ async def get_distance(data: DistanceRequestModel) -> DistanceResponseModel:
     return calculate_distance(
         embedding1=results[0].embeddings, embedding2=results[1].embeddings
     )
+
+
+@router.post("/text")
+async def text_to_emotions(data: TextToEmotionsModel) -> EmotionsResponseModel:
+    return await get_text_emotion(data)

@@ -17,3 +17,12 @@ class DistanceRequestModel(BaseModel):
 
 class DistanceResponseModel(BaseModel):
     similarity: float
+
+
+class TextToEmotionsModel(BaseModel):
+    text: str
+
+
+class EmotionsResponseModel(BaseModel):
+    text: str
+    emotions: list[dict]
