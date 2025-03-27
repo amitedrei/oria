@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from fastapi import UploadFile
 
 
 class TextToEmbeddingsModel(BaseModel):
@@ -26,3 +27,11 @@ class TextToEmotionsModel(BaseModel):
 class EmotionsResponseModel(BaseModel):
     text: str
     emotions: list[dict]
+
+
+class ImageToTextModel(BaseModel):
+    file: UploadFile
+
+
+class TextResponseModel(BaseModel):
+    text: str
