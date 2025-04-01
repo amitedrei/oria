@@ -11,6 +11,7 @@ from .models import (
     TextToEmbeddingsModel,
     TextToEmotionsModel,
     EmotionsResponseModel,
+    UploadSong
 )
 from .service import (
     calculate_distance,
