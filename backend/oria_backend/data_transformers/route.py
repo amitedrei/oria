@@ -11,6 +11,8 @@ from .models import (
     TextToEmbeddingsModel,
     TextToEmotionsModel,
     EmotionsResponseModel,
+    UploadPostResponse,
+    UploadPost,
     UploadSong
 )
 from .service import (
@@ -18,7 +20,8 @@ from .service import (
     get_embeddings,
     get_image_text,
     get_text_emotion,
-    extract_song_description
+    extract_song_description,
+    get_song_for_post
 )
 
 from pathlib import Path
@@ -71,3 +74,7 @@ async def upload_song(data: UploadSong):
     embedding = await extract_song_description(file_path, data.lyrics)
     os.remove(file_path)
     return embedding
+
+@router.post("/post")
+async def upload_post(data: UploadPost):
+    get_song_for_post(data)
