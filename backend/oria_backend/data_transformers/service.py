@@ -15,6 +15,8 @@ from .models import (
     TextToEmotionsModel,
     ImageToTextModel,
     TextResponseModel,
+    UploadPostResponse,
+    UploadPost,
     UploadSong
 )
 from io import BytesIO
@@ -290,4 +292,25 @@ async def extract_song_embedding(audio_path, lyrics):
   return embeddings_result.embeddings
 
 
+async def get_song_for_post(data: UploadPost):
+  model = ImageToTextModel(file=data.image)
+  response = await get_image_text(model)
+  image_as_text = response.text
+
+  input_model = TextToEmotionsModel(text=data.text)
+  emotions_result = await get_text_emotion(input_model)
+  sorted_emotions = sorted(emotions_result.emotions, key=lambda x: x["score"], reverse=True)
+  lyrics_emotions = [emotion['label'] for emotion in sorted_emotions if emotion['score'] > 0.65]
+
+  desc = ''
+
+  if lyrics_emotions:
+    desc += f"feeling:{', '.join(lyrics_emotions)}\n"
+
+  desc += f"theme:{image_as_text}\n"
+  desc += f"saying:{data.text}"
+  input_model = TextToEmbeddingsModel(text=desc)
+  embeddings_result = await get_embeddings(input_model)
+
+  return embeddings_result
 
