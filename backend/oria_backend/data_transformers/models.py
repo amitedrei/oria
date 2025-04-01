@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from fastapi import UploadFile
+from fastapi import UploadFile, File, Form
 
 
 class TextToEmbeddingsModel(BaseModel):
@@ -35,3 +35,8 @@ class ImageToTextModel(BaseModel):
 
 class TextResponseModel(BaseModel):
     text: str
+
+class UploadSong(BaseModel):
+    audio: UploadFile
+    lyrics: str
+
