@@ -17,8 +17,15 @@ from .service import (
     get_embeddings,
     get_image_text,
     get_text_emotion,
+    extract_song_description
 )
 
+from pathlib import Path
+import shutil
+import os
+
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 router = APIRouter(prefix="/data-transformers", tags=["Data Transformers"])
 
@@ -52,3 +59,14 @@ async def upload_image(file: UploadFile = File(...)) -> TextResponseModel:
             content={"message": "File must be an image"},
         )
     return await get_image_text(ImageToTextModel(file=file))
+
+@router.post("/song")
+async def upload_song(data: UploadSong):
+    file_path = UPLOAD_DIR / 'temp.wav'
+
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(data.audio, buffer)
+    
+    embedding = await extract_song_description(file_path, data.lyrics)
+    os.remove(file_path)
+    return embedding
