@@ -292,7 +292,7 @@ async def extract_song_embedding(audio_path, lyrics):
   return embeddings_result.embeddings
 
 
-async def get_song_for_post(data: UploadPost):
+async def get_description_for_post(data: UploadPost):
   model = ImageToTextModel(file=data.image)
   response = await get_image_text(model)
   image_as_text = response.text
@@ -309,8 +309,11 @@ async def get_song_for_post(data: UploadPost):
 
   desc += f"theme:{image_as_text}\n"
   desc += f"saying:{data.text}"
+
+  return desc
+
+async def get_song_for_post(data: UploadPost):
+  desc = get_description_for_post(data)
   input_model = TextToEmbeddingsModel(text=desc)
   embeddings_result = await get_embeddings(input_model)
-
   return embeddings_result
-
