@@ -307,7 +307,8 @@ async def get_description_for_post(data: UploadPost):
   if lyrics_emotions:
     desc += f"feeling:{', '.join(lyrics_emotions)}\n"
 
-  desc += f"theme:{image_as_text}\n"
+  desc += f"theme:{image_as_text}"
+
   desc += f"saying:{data.text}"
 
   return desc
