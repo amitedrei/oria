@@ -1,4 +1,5 @@
 from essentia.standard import MonoLoader, TensorflowPredictEffnetDiscogs, TensorflowPredict2D
+from sklearn.neighbors import NearestNeighbors
 from googletrans import Translator, LANGUAGES
 from scipy.spatial.distance import cosine
 from collections import Counter
@@ -19,10 +20,13 @@ from .models import (
     UploadPost,
     UploadSong
 )
+from pymongo import MongoClient
+from typing import Tuple, List
 from io import BytesIO
 import numpy as np
 import torch
 import re
+
 
 # audio models constants
 ESSENTIA_MODELS_PATH = '/content/drive/MyDrive/essentia_models/'
@@ -48,6 +52,35 @@ ENGAGEMENT_THRESHOLD = 0.50
 
 DANCEABLE_LABLES = ['True', "False"]
 DANCEABLE_THRESHOLD = 0.50
+
+def init_knn(connection_string: str):
+  global KNN_DATA, KNN_LABLES, KNN_MODEL
+  KNN_DATA, KNN_LABLES = get_song_data_from_mongodb(connection_string)
+  KNN_MODEL = NearestNeighbors(n_neighbors=3, metric='cosine')
+  KNN_MODEL.fit(KNN_DATA)
+
+KNN_DATA = None
+KNN_LABLES = None
+KNN_MODEL = None
+
+def get_song_data_from_mongodb(connection_string: str) -> Tuple[np.ndarray, List[Tuple[str, str, str]]]:
+
+    client = MongoClient(connection_string)
+    db = client["oriapp_db"]
+    songs_collection = db["songs"]
+
+    songs_cursor = songs_collection.find({}, {"embedding": 1, "name": 1, "source": 1, "url": 1})
+
+    embeddings = []
+    labels = []
+
+    for song in songs_cursor:
+        if "embedding" in song and isinstance(song["embedding"], list):
+            embeddings.append(song["embedding"])
+            labels.append((song.get("name", ""), song.get("source", ""), song.get("url", "")))
+
+    return np.array(embeddings, dtype=np.float32), labels
+
 
 device = torch.device(
     "cuda"
@@ -316,5 +349,9 @@ async def get_description_for_post(data: UploadPost):
 async def get_song_for_post(data: UploadPost):
   desc = get_description_for_post(data)
   input_model = TextToEmbeddingsModel(text=desc)
-  embeddings_result = await get_embeddings(input_model)
-  return embeddings_result
+  embeddings_result = await get_embeddings(input_model).embeddings
+  distances, indices = KNN_MODEL.kneighbors([embeddings_result])
+  k_labels = [KNN_DATA[i] for i in indices[0]]
+  return k_labels
+  
+
