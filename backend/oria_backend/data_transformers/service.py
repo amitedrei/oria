@@ -351,7 +351,7 @@ async def get_song_for_post(data: UploadPost):
   input_model = TextToEmbeddingsModel(text=desc)
   embeddings_result = await get_embeddings(input_model).embeddings
   distances, indices = KNN_MODEL.kneighbors([embeddings_result])
-  k_labels = [KNN_DATA[i] for i in indices[0]]
+  k_labels = [KNN_LABLES[i] for i in indices[0]]
   return k_labels
   
 
