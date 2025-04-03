@@ -346,12 +346,12 @@ async def get_description_for_post(data: UploadPost):
 
   return desc
 
+
 async def get_song_for_post(data: UploadPost):
-  desc = get_description_for_post(data)
+  desc = await get_description_for_post(data)
   input_model = TextToEmbeddingsModel(text=desc)
-  embeddings_result = await get_embeddings(input_model).embeddings
-  distances, indices = KNN_MODEL.kneighbors([embeddings_result])
+  embeddings_result = await get_embeddings(input_model)
+  distances, indices = KNN_MODEL.kneighbors([embeddings_result.embeddings])
   k_labels = [KNN_LABLES[i] for i in indices[0]]
   return k_labels
   
-
