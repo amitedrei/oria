@@ -1,0 +1,372 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: #1e1e24;
+  color: white;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 40px 20px 40px;
+  background-color: #1b1b21;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.main-layout {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.card {
+  background-color: #333339;
+  border-radius: 10px;
+  padding: 30px;
+  width: 90%;
+  max-width: 800px;
+}
+
+.section {
+  margin-bottom: 40px;
+}
+
+.section-title {
+  font-size: 20px;
+  color: #a9a9b3;
+  margin-bottom: 20px;
+}
+
+.divider {
+  border-width: 2px;
+  border-left: #a9a9b3 solid;
+  border-style: solid;
+  border: #a9a9b3 ;
+  height: min-content;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  border-width: 0px 0px 0px 3px;
+  border-style: solid;
+  padding-left: 10px;
+}
+
+.support-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 50px;
+}
+
+.support-button {
+  background-color: #242427;
+  border-radius: 5px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.upload-title {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  color: #a9a9b3;
+}
+
+.upload-area {
+  border: 2px dashed #a9a9b3;
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+
+.upload-text {
+  color: #a9a9b3;
+  font-size: 16px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 5px;
+  background-color: #242427;
+  color: white;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+}
+
+.button {
+  width: 100%;
+  padding: 15px;
+  background-color: #e1e1ec;
+  color: #333;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.button-text {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.results-title {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  color: #a9a9b3;
+}
+
+.song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.song-item {
+  background-color: #242427;
+  border-radius: 5px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.song-image {
+  width: 60px;
+  height: 60px;
+  background-color: #e1e1ec;
+  border-radius: 3px;
+}
+
+.song-details {
+  margin-left: 15px;
+  flex-grow: 1;
+}
+
+.song-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.song-artist {
+  color: #a9a9b3;
+  font-size: 14px;
+}
+
+.match-percentage {
+  display: flex;
+  align-items: center;
+  margin-left: 20px;
+}
+
+.percentage {
+  margin-right: 10px;
+}
+
+.progress-bar {
+  width: 80px;
+  height: 6px;
+  background-color: #444;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #e1e1ec;
+}
+
+.show-more-button {
+  background-color: #242427;
+  border: none;
+  color: #a9a9b3;
+  padding: 15px;
+  width: 100%;
+  text-align: center;
+  margin: 20px 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.upload-area {
+  border: 2px dashed #a9a9b3;
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-area.active {
+  border-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.upload-area.has-image {
+  border-style: solid;
+}
+
+.preview-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.image-preview {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.file-name {
+  margin-top: 10px;
+  color: #a9a9b3;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.input-file {
+  display: none;
+}
+
+
+.image-preview-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.remove-button {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background-color: #242427;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.remove-button:hover {
+  background-color: #e74c3c;
+}
+
+.upload-area.has-image {
+  cursor: default;
+}
+
+.alert-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.alert-dialog {
+  background-color: #333339;
+  border-radius: 10px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+.alert-dialog p {
+  margin-bottom: 20px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.alert-button {
+  background-color: #e1e1ec;
+  color: #333;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 15px;
+  width: 100%;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.alert-button:hover {
+  background-color: #ffffff;
+}
+
+.spinner {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
