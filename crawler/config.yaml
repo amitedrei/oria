@@ -1,0 +1,15 @@
+crawlers:
+  youtube:
+    playlists:
+      - 'PL4fGSI1pDJn69On1f-8NAvX_CYlx7QyZc' # Top 100 Music Videos United States
+      - 'PL4fGSI1pDJn5xFol0l4GwBnHYtXXMaY82' # Top 100 Music Videos Israel
+      - 'PL4fGSI1pDJn4ECcNLNscMAPND-Degbd5N' # Top 100 Songs Israel
+      - 'PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI' # Top 100 Songs United States
+      - 'RDCLAK5uy_kmPRjHDECIcuVwnKsx2Ng7fyNgFKWNJFs' # The Hit List
+      - 'RDCLAK5uy_nDL8KeBrUagwyISwNmyEiSfYgz1gVCesg' # Mellow Pop Classics
+      - 'RDCLAK5uy_lJ8xZWiZj2GCw7MArjakb6b0zfvqwldps' # Country Hotlist
+      - 'RDCLAK5uy_nhf3h98yS3LCk_bVNQu6GjWG7ARvMaiFQ' # NEON: Pop Hits
+      - 'RDCLAK5uy_kmq8ZD0NbHbKkZZ6frtlEjd8khfeZrAd0' # Afrobeats Now
+      - 'RDCLAK5uy_mfdqvCAl8wodlx2P2_Ai2gNkiRDAufkkI' # Happy Pop Hits
+      - 'RDCLAK5uy_mkEwQuegHYB8_aAzBO8Q__6gGoaFblISw' # Feel-Good Hip Hop and R&B
+interval_days: 1
