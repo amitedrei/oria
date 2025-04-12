@@ -1,6 +1,7 @@
 import asyncio
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, UploadFile, Form
 from fastapi.responses import JSONResponse
+import hashlib
 
 from .models import (
     DistanceRequestModel,
@@ -20,7 +21,7 @@ from .service import (
     get_embeddings,
     get_image_text,
     get_text_emotion,
-    extract_song_description,
+    extract_song_embedding,
     get_song_for_post
 )
 
@@ -65,15 +66,21 @@ async def upload_image(file: UploadFile = File(...)) -> TextResponseModel:
     return await get_image_text(ImageToTextModel(file=file))
 
 @router.post("/song")
-async def upload_song(data: UploadSong):
-    file_path = UPLOAD_DIR / 'temp.wav'
+async def upload_song(
+    audio: UploadFile = File(...),
+    lyrics: str = Form(...)
+):
+    print(audio.filename)
+    file_path = f"{hashlib.sha256(audio.filename.encode()).hexdigest()}.wav"
+    file_path = f"{str(UPLOAD_DIR)}/{file_path}"
 
-    with file_path.open("wb") as buffer:
-        shutil.copyfileobj(data.audio, buffer)
+    with open (file_path, "wb") as buffer:
+        shutil.copyfileobj(audio.file, buffer)
     
-    embedding = await extract_song_description(file_path, data.lyrics)
+    embedding = await extract_song_embedding(file_path, lyrics)
     os.remove(file_path)
     return embedding
+
 
 @router.post("/post")
 async def upload_post(data: UploadPost):

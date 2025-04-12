@@ -23,9 +23,10 @@ from io import BytesIO
 import numpy as np
 import torch
 import re
+import os
 
 # audio models constants
-ESSENTIA_MODELS_PATH = '/content/drive/MyDrive/essentia_models/'
+ESSENTIA_MODELS_PATH = os.path.expanduser('~/essentia_models/')
 MOOD_EMBEDING_MODEL = 'discogs-effnet-bs64-1.pb'
 MOOD_MODEL = 'mtg_jamendo_moodtheme-discogs_label_embeddings-effnet-1.pb'
 
@@ -84,7 +85,7 @@ async def get_text_emotion(data: TextToEmotionsModel) -> EmotionsResponseModel:
     classifier_emotion = pipeline(
         "text-classification",
         model="j-hartmann/emotion-english-distilroberta-base",
-        return_all_scores=True,
+        top_k=None,
     )
     emotions = classifier_emotion(data.text)[0]
 
@@ -166,7 +167,7 @@ def is_dedanceable(embeddings):
   return return_top_labels(predictions, DANCEABLE_LABLES, DANCEABLE_THRESHOLD)
 
 async def get_audio_description(audio_path):
-  audio = MonoLoader(filename=audio_path, sampleRate=16000, resampleQuality=4)()
+  audio = MonoLoader(filename=str(audio_path), sampleRate=16000, resampleQuality=4)()
   embedding_model = TensorflowPredictEffnetDiscogs(graphFilename=f"{ESSENTIA_MODELS_PATH}discogs-effnet-bs64-1.pb", output="PartitionedCall:1")
   embeddings = embedding_model(audio)
 
@@ -177,14 +178,35 @@ async def get_audio_description(audio_path):
   return genre, mood, engagment, danceable
 
 
-def translate_to_english(text):
+async def translate_to_english(text):
     translator = Translator()
-    detection = translator.detect(text)
-    translation = translator.translate(text, dest='en')
+    translation = await translator.translate(text, dest='en')
     return translation.text
 
+async def identify_chorus_from_src(src_lyrics):
+  chorus = ''
+  for i in re.findall(r'(\[.*?\])+', src_lyrics):
+    if chorus:
+      index = chorus.find(i)
+      if not index:
+         continue
+      chorus = chorus[:index]
+      break
+    else:
+      res = await translate_to_english(i)
+      if 'chorus' in res.lower():
+        index = src_lyrics.find(i)
+        if not index:
+          continue
+        
+        chorus = src_lyrics[index + len(i):]
+    
+  if chorus:
+     return await translate_to_english(chorus)
+  return chorus
 
-def identify_chorus(lyrics):
+
+async def identify_chorus(lyrics):
     # split to song sections
     lines = [line.strip() for line in lyrics.split('\n') if line.strip()]
     sections = []
@@ -250,8 +272,11 @@ def identify_chorus(lyrics):
     return max(line_counts.items(), key=lambda x: x[1])[0]
 
 async def get_lyrics_description(lyrics):
-  en_lyrics = translate_to_english(lyrics)
-  chorus = identify_chorus(en_lyrics)
+
+  chorus = await identify_chorus_from_src(lyrics)
+  if not chorus:   
+    en_lyrics = translate_to_english(lyrics)
+    chorus = identify_chorus(en_lyrics)
 
   # extract emotions
   input_model = TextToEmotionsModel(text=chorus)

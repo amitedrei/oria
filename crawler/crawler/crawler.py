@@ -1,0 +1,215 @@
+import asyncio
+import json
+from abc import ABC, abstractmethod
+import os
+import aiohttp
+from .lyrics_handler import LyricsHandler
+from services.song_service import SongService
+import json
+
+BACKEND_URL = os.getenv('BACKEND_URL') or 'http://localhost:8000'
+
+class Crawler:
+    __crawler_list = []
+    __interval = 0
+    __lyrics_handler = None
+
+    @classmethod
+    def initialize(cls):
+        """Initialize shared resources"""
+        if cls.__lyrics_handler is None:
+            LyricsHandler.initialize()
+            cls.__lyrics_handler = LyricsHandler()
+
+    def __init__(self, source_name):
+        Crawler.initialize()
+
+        # Default to running once per day (24 hours) if not defined by user.
+        if not self.__class__.__interval:
+            self.__class__.__interval = 1 * 24 * 60 * 60
+
+        self.__results = {}
+        self.initialized = False
+        self.session = None
+        self.source_name = source_name
+
+    async def __set_session(self):
+        session = aiohttp.ClientSession(headers={
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.159 Safari/537.36'
+        },
+        timeout=aiohttp.ClientTimeout(total=300))
+        return session
+
+    @classmethod
+    def set_interval(cls, interval):
+        if type(interval) not in [float, int] or interval <= 0:
+            return False
+
+        cls.__interval = interval * 24 * 60 * 60
+        return True
+
+    async def start(self):
+        if not self.initialized:
+            if not self.session:
+                self.session = await self.__set_session()
+            Crawler.__crawler_list.append(self)
+            self.initialized = True
+
+    async def stop(self):
+        if self.initialized:
+            Crawler.__crawler_list.remove(self)
+            self.initialized = False
+            try:
+                await self.session.close()
+            except:
+                pass
+
+            self.session = None
+
+    @abstractmethod
+    async def __download_song(self, id, song):
+        pass
+
+    @staticmethod
+    async def __crawl_once():
+        results = {}
+        tasks = []
+
+        crawlers = [crawler for crawler in Crawler.__crawler_list if crawler.initialized]
+
+        for crawler in crawlers:
+            crawler.__results.clear()
+            tasks.append(crawler._Crawler__crawl())
+
+        await asyncio.gather(*tasks)
+        tasks.clear()
+        crawl_results = []
+
+        for i in range(5):
+            print(f'[Enumeration {i+1}]')
+            print('[~] Tagging Songs')
+            for index, crawler in enumerate(crawlers):
+                if len(crawl_results) < index+1:
+                    crawl_results.append(await SongService.tag_songs(crawler.get_source_name(), crawler.__get_results()))
+                    new_songs = len(crawl_results[index]['new'])
+                    total_songs = new_songs + len(crawl_results[index]['exists'])
+
+                    print(f'[~] `{crawler.get_source_name()}` Crawler Found {total_songs} Songs, Out Of them {new_songs} are new!')
+
+                    if not await SongService.remove_old_songs(crawler.get_source_name(), crawl_results[index]):
+                        print(f"[!] Couldn't Remove Old Songs For Source `{crawler.get_source_name()}`")
+
+                    if not await SongService.update_existing_songs_playlists(crawler.get_source_name(), crawl_results[index]):
+                        print(f"[!] Couldn't Update Existing Songs For Source `{crawler.get_source_name()}`")
+
+                else:
+                    crawl_results[index] = await SongService.tag_songs(crawler.get_source_name(), crawl_results[index]['new'])
+
+               
+            print('[~] Getting Song Embeddings And Adding To DB')
+            for index, crawler in enumerate(crawlers):
+                print(f"[ Adding `{crawler.get_source_name()}` Crawler's Songs ]")
+                await crawler.__crawlers_results_to_db(crawl_results[index]['new'])
+
+            print('')
+            await asyncio.sleep(10)
+
+    @classmethod
+    async def crawl_all(cls):
+        while True:
+            await cls.__crawl_once()
+            print('Sleeping!')
+            await asyncio.sleep(cls.__interval)
+
+    @abstractmethod
+    async def get_playlists(self):
+        pass
+
+    @abstractmethod
+    async def __crawl(self):
+        pass
+
+    def get_source_name(self):
+        return self.source_name
+
+    async def __get_song_embedding(self, song_id, song):
+        if 'lyrics' not in song:
+            song['lyrics'] = await Crawler.__lyrics_handler.find_song(song)
+
+        if not song['lyrics']:
+            return
+
+        data = await self.__download_song(song_id, song)
+        if not data:
+            return
+
+        form_data = aiohttp.FormData()
+        form_data.add_field('audio',
+                            data['data'],
+                            filename=data['file_name'],
+                            content_type='audio/wav')
+        form_data.add_field('lyrics', song['lyrics'])
+
+        embedding = []
+        try:
+            async with self.session.post(f"{BACKEND_URL}/data-transformers/song", data=form_data) as resp:
+                if resp.status == aiohttp.http.HTTPStatus.OK:
+                    embedding = json.loads(await resp.text())
+        except:
+            pass
+
+        finally:
+            del data
+            del form_data
+
+        if embedding:
+            song['embedding'] = embedding
+            del song['lyrics']
+
+    def _add_to_results(self, song_id, name, artists, url, thumbnail, playlists):
+        song = {
+            'source': self.source_name,
+            'name': name,
+            'artists': artists,
+            'url': url,
+            'thumbnail': thumbnail,
+            'playlists': playlists,
+        }
+
+        if not all([song_id, song['name'], song['url'], song['artists'], song['thumbnail']]):
+            return False
+        if song_id in self.__results:
+            self.__results[song_id]['playlists'].update(song['playlists'])
+            return True
+
+        self.__results[song_id] = song
+
+    async def __crawlers_results_to_db(self, songs):
+        songs_per_batch = 5
+        tasks = []
+        evaluated_songs = {}
+        for index, (song_id, song) in enumerate(songs.items()):
+            if song_id != 'VcRc2DHHhoM':
+                continue
+            evaluated_songs[song_id] = song
+            tasks.append(self.__get_song_embedding(song_id, song))
+            if len(tasks) == songs_per_batch:
+                await asyncio.gather(*tasks)
+
+                # Add Only "Good" Songs
+                evaluated_songs = {song_id: song for song_id, song in evaluated_songs.items() if 'embedding' in song and song['embedding']}
+                await SongService.add_songs(evaluated_songs)
+                tasks.clear()
+                evaluated_songs.clear()
+
+                print(f'Checked {index+1} Songs out Of {len(songs)}')
+
+
+        if tasks:
+            await asyncio.gather(*tasks)
+            evaluated_songs = {song_id: song for song_id, song in evaluated_songs.items() if 'embedding' in song and song['embedding']}
+            await SongService.add_songs(evaluated_songs)
+
+
+    def __get_results(self):
+        return self.__results.copy()
