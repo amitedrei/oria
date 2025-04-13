@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     host: str
     port: int
     env: str
+    mongo_uri: str
+    mongo_db_name: str
 
 
 settings = Settings()
