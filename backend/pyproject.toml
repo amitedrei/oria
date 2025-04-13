@@ -6,8 +6,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "einops>=0.8.0",
+  "essentia>=2.1b6.dev1177",
+  "essentia-tensorflow>=2.1b6.dev1177",
   "fastapi>=0.115.6",
+  "googletrans>=4.0.2",
   "loguru>=0.7.3",
+  "motor>=3.7.0",
+  "numpy<2.0",
   "pillow>=11.1.0",
   "pydantic>=2.10.5",
   "pydantic-settings>=2.7.1",

@@ -83,5 +83,5 @@ async def upload_song(
 
 
 @router.post("/post")
-async def upload_post(data: UploadPost):
-    get_song_for_post(data)
+async def get_song_for_post_data(data: UploadPost):
+    return await get_song_for_post(data)
