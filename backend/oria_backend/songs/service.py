@@ -17,7 +17,6 @@ async def get_all_songs() -> List[SongResponseModel]:
             thumbnail=song["thumbnail"],
             source=song["source"],
             playlists=song["playlists"],
-            distance=song["distance"],
         )
         for song in songs
     ]
