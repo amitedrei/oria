@@ -4,10 +4,10 @@ from fastapi import APIRouter, Form, UploadFile
 from oria_backend.data_transformers.models import UploadPost
 from oria_backend.songs.service import find_top_songs, get_all_songs
 
-router = APIRouter()
+router = APIRouter(prefix="/songs", tags=["Songs"])
 
 
-@router.get("/songs")
+@router.get("/")
 async def get_songs():
     return await get_all_songs()
 

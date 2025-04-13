@@ -8,7 +8,19 @@ from oria_backend.songs.mongo import mongodb
 
 async def get_all_songs() -> List[SongResponseModel]:
     songs = await mongodb.get_all_songs()
-    return [SongResponseModel(**song) for song in songs]
+    return [
+        SongResponseModel(
+            id=song["_id"],
+            name=song["name"],
+            artists=song["artists"],
+            url=song["url"],
+            thumbnail=song["thumbnail"],
+            source=song["source"],
+            playlists=song["playlists"],
+            distance=song["distance"],
+        )
+        for song in songs
+    ]
 
 
 async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
