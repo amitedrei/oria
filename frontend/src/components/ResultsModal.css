@@ -1,0 +1,75 @@
+.results-container {
+  padding: 1rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.song-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.song-result-item:hover {
+  background-color: #e9ecef;
+}
+
+.song-info {
+  flex: 1;
+}
+
+.song-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+  color: #000;
+}
+
+.song-artist {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.match-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 120px;
+}
+
+.match-percentage {
+  font-weight: 600;
+  color: #28a745;
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+  width: 100px;
+  height: 6px;
+  background-color: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #28a745;
+  transition: width 0.3s ease;
+}
+
+.song-url {
+  color: #FF0000;
+  text-decoration: none;
+  font-size: 0.9em;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.song-url:hover {
+  text-decoration: underline;
+} 
