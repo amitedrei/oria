@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { ArrowRight, X, Loader } from 'lucide-react';
+import ResultsModal from '../components/ResultsModal';
 
 function UploadPage({ onNavigate }) {
   const [dragActive, setDragActive] = useState(false);
@@ -7,6 +8,8 @@ function UploadPage({ onNavigate }) {
   const [additionalText, setAdditionalText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
   const fileInputRef = useRef(null);
 
   const handleDrag = (e) => {
@@ -72,7 +75,7 @@ function UploadPage({ onNavigate }) {
     setAlertMessage(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!imageFile) {
       showAlert("Please upload an image first");
       return;
@@ -80,11 +83,29 @@ function UploadPage({ onNavigate }) {
     
     setIsLoading(true);
     
-    // Simulate processing time
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('text', additionalText);
+
+      const response = await fetch('http://0.0.0.0:8000/songs/find-songs', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch songs');
+      }
+
+      const data = await response.json();
+      setSearchResults(data);
+      setShowResultsModal(true);
+    } catch (error) {
+      showAlert("Failed to process your request. Please try again.");
+      console.error('Error:', error);
+    } finally {
       setIsLoading(false);
-      onNavigate('results');
-    }, 1500);
+    }
   };
 
   return (
@@ -157,6 +178,12 @@ function UploadPage({ onNavigate }) {
           </div>
         </div>
       )}
+
+      <ResultsModal 
+        isOpen={showResultsModal}
+        onClose={() => setShowResultsModal(false)}
+        songs={searchResults}
+      />
     </div>
   );
 }
