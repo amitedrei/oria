@@ -132,6 +132,7 @@ function UploadPage({ onNavigate }) {
                 className="remove-button" 
                 onClick={removeImage}
                 aria-label="Remove image"
+                disabled={isLoading}
               >
                 <X size={18} />
               </button>
@@ -147,6 +148,7 @@ function UploadPage({ onNavigate }) {
           className="input-file"
           accept="image/*"
           onChange={handleChange}
+          disabled={isLoading}
           style={{ display: "none" }}
         />
       </div>
@@ -156,6 +158,7 @@ function UploadPage({ onNavigate }) {
         className="input-field" 
         placeholder="Type your additional text" 
         value={additionalText}
+        disabled={isLoading}
         onChange={(e) => setAdditionalText(e.target.value)}
       />
       
