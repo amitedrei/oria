@@ -40,6 +40,7 @@ class UploadSong(BaseModel):
     audio: UploadFile
     lyrics: str
 
+
 class UploadPost(BaseModel):
     text: str
     image: UploadFile
