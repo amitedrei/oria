@@ -6,8 +6,14 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "einops>=0.8.0",
-  "essentia>=2.1b6.dev1177",
-  "essentia-tensorflow>=2.1b6.dev1177",
+
+  # macOS: grab the prebuilt TF-enabled dev wheels
+  "essentia>=2.1b6.dev1177; sys_platform=='darwin'",
+  "essentia-tensorflow>=2.1b6.dev1177; sys_platform=='darwin'",
+
+  # Linux: build from Git (will compile the library + TF wrappers)
+  "essentia @ git+https://github.com/MTG/essentia.git@master#egg=essentia; sys_platform=='linux'",
+
   "fastapi>=0.115.6",
   "googletrans>=4.0.2",
   "loguru>=0.7.3",
