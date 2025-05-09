@@ -1,195 +1,51 @@
+import re
+from collections import Counter
+from io import BytesIO
+
+import numpy as np
+import torch
 from essentia.standard import (
     MonoLoader,
-    TensorflowPredictEffnetDiscogs,
     TensorflowPredict2D,
+    TensorflowPredictEffnetDiscogs,
 )
-from googletrans import Translator, LANGUAGES
+from googletrans import Translator
+from PIL import Image
 from scipy.spatial.distance import cosine
-from collections import Counter
 from transformers import (
     AutoModel,
     pipeline,
 )
-from PIL import Image
+
+from oria_backend.data_transformers.prompts.image_to_embeddings import (
+    generate_image_to_embeddings_prompt,
+)
+from oria_backend.data_transformers.prompts.song_to_embeddings import (
+    generate_song_to_embeddings_prompt,
+)
+
+from .consts import (
+    DANCEABLE_LABLES,
+    DANCEABLE_THRESHOLD,
+    ENGAGEMENT_LABELS,
+    ENGAGEMENT_THRESHOLD,
+    ESSENTIA_MODELS_PATH,
+    GENRE_LABELS,
+    GENRE_THRESHOLD,
+    LABELS,
+    MOOD_LABELS,
+    MOOD_THRESHOLD,
+)
 from .models import (
     DistanceResponseModel,
     EmbeddingsResponseModel,
-    TextToEmbeddingsModel,
     EmotionsResponseModel,
-    TextToEmotionsModel,
     ImageToTextModel,
     TextResponseModel,
-    UploadPostResponse,
+    TextToEmbeddingsModel,
+    TextToEmotionsModel,
     UploadPost,
-    UploadSong,
 )
-from io import BytesIO
-import numpy as np
-import torch
-import re
-import os
-
-# audio models constants
-ESSENTIA_MODELS_PATH = os.path.expanduser("~/essentia_models/")
-MOOD_EMBEDING_MODEL = "discogs-effnet-bs64-1.pb"
-MOOD_MODEL = "mtg_jamendo_moodtheme-discogs_label_embeddings-effnet-1.pb"
-
-MOOD_LABELS = [
-    "action",
-    "adventure",
-    "advertising",
-    "background",
-    "ballad",
-    "calm",
-    "children",
-    "christmas",
-    "commercial",
-    "cool",
-    "corporate",
-    "dark",
-    "deep",
-    "documentary",
-    "drama",
-    "dramatic",
-    "dream",
-    "emotional",
-    "energetic",
-    "epic",
-    "fast",
-    "film",
-    "fun",
-    "funny",
-    "game",
-    "groovy",
-    "happy",
-    "heavy",
-    "holiday",
-    "hopeful",
-    "inspiring",
-    "love",
-    "meditative",
-    "melancholic",
-    "melodic",
-    "motivational",
-    "movie",
-    "nature",
-    "party",
-    "positive",
-    "powerful",
-    "relaxing",
-    "retro",
-    "romantic",
-    "sad",
-    "sexy",
-    "slow",
-    "soft",
-    "soundscape",
-    "space",
-    "sport",
-    "summer",
-    "trailer",
-    "travel",
-    "upbeat",
-    "uplifting",
-]
-MOOD_THRESHOLD = 0.63
-
-GENRE_LABELS = [
-    "60s",
-    "70s",
-    "80s",
-    "90s",
-    "acidjazz",
-    "alternative",
-    "alternativerock",
-    "ambient",
-    "atmospheric",
-    "blues",
-    "bluesrock",
-    "bossanova",
-    "breakbeat",
-    "celtic",
-    "chanson",
-    "chillout",
-    "choir",
-    "classical",
-    "classicrock",
-    "club",
-    "contemporary",
-    "country",
-    "dance",
-    "darkambient",
-    "darkwave",
-    "deephouse",
-    "disco",
-    "downtempo",
-    "drumnbass",
-    "dub",
-    "dubstep",
-    "easylistening",
-    "edm",
-    "electronic",
-    "electronica",
-    "electropop",
-    "ethno",
-    "eurodance",
-    "experimental",
-    "folk",
-    "funk",
-    "fusion",
-    "groove",
-    "grunge",
-    "hard",
-    "hardrock",
-    "hiphop",
-    "house",
-    "idm",
-    "improvisation",
-    "indie",
-    "industrial",
-    "instrumentalpop",
-    "instrumentalrock",
-    "jazz",
-    "jazzfusion",
-    "latin",
-    "lounge",
-    "medieval",
-    "metal",
-    "minimal",
-    "newage",
-    "newwave",
-    "orchestral",
-    "pop",
-    "popfolk",
-    "poprock",
-    "postrock",
-    "progressive",
-    "psychedelic",
-    "punkrock",
-    "rap",
-    "reggae",
-    "rnb",
-    "rock",
-    "rocknroll",
-    "singersongwriter",
-    "soul",
-    "soundtrack",
-    "swing",
-    "symphonic",
-    "synthpop",
-    "techno",
-    "trance",
-    "triphop",
-    "world",
-    "worldfusion",
-]
-GENRE_THRESHOLD = 0.63
-
-ENGAGEMENT_LABELS = ["high", "low"]
-ENGAGEMENT_THRESHOLD = 0.50
-
-DANCEABLE_LABLES = ["True", "False"]
-DANCEABLE_THRESHOLD = 0.50
 
 device = torch.device(
     "cuda"
@@ -203,7 +59,44 @@ embeddings_model = AutoModel.from_pretrained(
     "jinaai/jina-embeddings-v3", trust_remote_code=True
 ).to(device)
 
-image_to_text = pipeline("image-to-text", model="Salesforce/blip2-opt-2.7b")
+classifier_emotion = pipeline(
+    "text-classification",
+    model="j-hartmann/emotion-english-distilroberta-base",
+    top_k=None,
+    device=device,
+)
+
+classifier_label = pipeline(
+    "zero-shot-classification", model="facebook/bart-large-mnli", device=device
+)
+image_to_text = pipeline(
+    "image-to-text", model="nlpconnect/vit-gpt2-image-captioning", device=device
+)
+
+song_embedding_model = TensorflowPredictEffnetDiscogs(
+    graphFilename=f"{ESSENTIA_MODELS_PATH}/discogs-effnet-bs64-1.pb",
+    output="PartitionedCall:1",
+)
+
+danceable_model = TensorflowPredict2D(
+    graphFilename=f"{ESSENTIA_MODELS_PATH}/danceability-discogs-effnet-1.pb",
+    output="model/Softmax",
+)
+
+
+engagement_model = TensorflowPredict2D(
+    graphFilename=f"{ESSENTIA_MODELS_PATH}/engagement_2c-discogs-effnet-1.pb",
+    output="model/Softmax",
+)
+
+genre_model = TensorflowPredict2D(
+    graphFilename=f"{ESSENTIA_MODELS_PATH}/mtg_jamendo_genre-discogs-effnet-1.pb"
+)
+
+
+mood_model = TensorflowPredict2D(
+    graphFilename=f"{ESSENTIA_MODELS_PATH}/mtg_jamendo_moodtheme-discogs_label_embeddings-effnet-1.pb"
+)
 
 
 async def get_embeddings(data: TextToEmbeddingsModel) -> EmbeddingsResponseModel:
@@ -223,34 +116,7 @@ def calculate_distance(
 
 
 async def get_text_emotion(data: TextToEmotionsModel) -> EmotionsResponseModel:
-    classifier_emotion = pipeline(
-        "text-classification",
-        model="j-hartmann/emotion-english-distilroberta-base",
-        top_k=None,
-    )
     emotions = classifier_emotion(data.text)[0]
-
-    classifier_label = pipeline(
-        "zero-shot-classification", model="facebook/bart-large-mnli"
-    )
-    LABELS = [
-        "Chill",
-        "Energetic",
-        "Intense",
-        "Uplifting",
-        "Dark",
-        "Melancholic",
-        "Playful",
-        "Romantic",
-        "Workout",
-        "Relaxation",
-        "Study",
-        "Driving",
-        "Party",
-        "Focus",
-        "Meditation",
-        "Nature",
-    ]
     labels_scores = classifier_label(data.text, LABELS, multi_label=True)
 
     emotions.extend(
@@ -292,51 +158,30 @@ def return_top_labels(predictions, labels, threshold):
 
 
 def get_audio_mood(embeddings):
-    # use the model to extact mood/theme vector
-    model = TensorflowPredict2D(
-        graphFilename=f"{ESSENTIA_MODELS_PATH}mtg_jamendo_moodtheme-discogs_label_embeddings-effnet-1.pb"
-    )
-    predictions = model(embeddings)
+    predictions = mood_model(embeddings)
 
     return return_top_labels(predictions, MOOD_LABELS, MOOD_THRESHOLD)
 
 
 def get_audio_genre(embeddings):
-    # use the model to extact genre of the song
-    model = TensorflowPredict2D(
-        graphFilename=f"{ESSENTIA_MODELS_PATH}mtg_jamendo_genre-discogs-effnet-1.pb"
-    )
-    predictions = model(embeddings)
+    predictions = genre_model(embeddings)
     return return_top_labels(predictions, GENRE_LABELS, GENRE_THRESHOLD)
 
 
 def get_engagment_level(embeddings):
-    # use the model to classify if high or low engagment song
-    model = TensorflowPredict2D(
-        graphFilename=f"{ESSENTIA_MODELS_PATH}engagement_2c-discogs-effnet-1.pb",
-        output="model/Softmax",
-    )
-    predictions = model(embeddings)
+    predictions = engagement_model(embeddings)
     return return_top_labels(predictions, ENGAGEMENT_LABELS, ENGAGEMENT_THRESHOLD)
 
 
 def is_dedanceable(embeddings):
-    # use the model to decide if song is danceable
-    model = TensorflowPredict2D(
-        graphFilename=f"{ESSENTIA_MODELS_PATH}danceability-discogs-effnet-1.pb",
-        output="model/Softmax",
-    )
-    predictions = model(embeddings)
+    predictions = danceable_model(embeddings)
     return return_top_labels(predictions, DANCEABLE_LABLES, DANCEABLE_THRESHOLD)
 
 
 async def get_audio_description(audio_path):
     audio = MonoLoader(filename=str(audio_path), sampleRate=16000, resampleQuality=4)()
-    embedding_model = TensorflowPredictEffnetDiscogs(
-        graphFilename=f"{ESSENTIA_MODELS_PATH}discogs-effnet-bs64-1.pb",
-        output="PartitionedCall:1",
-    )
-    embeddings = embedding_model(audio)
+
+    embeddings = song_embedding_model(audio)
 
     genre = f"{', '.join(get_audio_genre(embeddings))}"
     mood = f"{', '.join(get_audio_mood(embeddings))}"
@@ -443,8 +288,8 @@ async def identify_chorus(lyrics):
 async def get_lyrics_description(lyrics):
     chorus = await identify_chorus_from_src(lyrics)
     if not chorus:
-        en_lyrics = translate_to_english(lyrics)
-        chorus = identify_chorus(en_lyrics)
+        en_lyrics = await translate_to_english(lyrics)
+        chorus = await identify_chorus(en_lyrics)
 
     # extract emotions
     input_model = TextToEmotionsModel(text=chorus)
@@ -473,14 +318,11 @@ async def extract_song_description(audio_path, lyrics):
     if lyrics_emotions:
         mood = f"{mood}, {lyrics_emotions}"
 
-    desc = ""
-    if genre:
-        desc += f"gener:{genre}\n"
-    if mood:
-        desc += f"feeling:{mood}\n"
-    if chorus:
-        desc += f"theme:{chorus}"
-    return desc
+    return generate_song_to_embeddings_prompt(
+        genre=genre,
+        mood=mood if isinstance(mood, str) else ", ".join(mood),
+        description=chorus,
+    )
 
 
 async def extract_song_embedding(audio_path, lyrics):
@@ -500,20 +342,11 @@ async def get_description_for_post(data: UploadPost):
     sorted_emotions = sorted(
         emotions_result.emotions, key=lambda x: x["score"], reverse=True
     )
-    lyrics_emotions = [
+    emotions = [
         emotion["label"] for emotion in sorted_emotions if emotion["score"] > 0.65
     ]
 
-    desc = ""
-
-    if lyrics_emotions:
-        desc += f"feeling:{', '.join(lyrics_emotions)}\n"
-
-    desc += f"theme:{image_as_text}"
-
-    desc += f"saying:{data.text}"
-
-    return desc
+    return generate_image_to_embeddings_prompt(image_as_text, emotions, data.text)
 
 
 async def get_song_for_post(data: UploadPost):

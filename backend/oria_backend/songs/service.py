@@ -17,13 +17,14 @@ async def get_all_songs() -> List[SongResponseModel]:
             thumbnail=song["thumbnail"],
             source=song["source"],
             playlists=song["playlists"],
+            distance=-1,
         )
         for song in songs
     ]
 
 
 async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
-    song_data = await get_song_for_post_data(data)
+    song_data = await get_song_for_post_data(data.text, data.image)
     embedding = song_data.embeddings
     similar_songs = await mongodb.find_similar_songs(embedding, 5)
 
