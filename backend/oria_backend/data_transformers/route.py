@@ -24,7 +24,6 @@ from .service import (
     extract_song_embedding,
     get_embeddings,
     get_image_text,
-    # extract_song_embedding,
     get_song_for_post,
     get_text_emotion,
 )
@@ -67,7 +66,7 @@ async def upload_image(file: UploadFile = File(...)) -> TextResponseModel:
 
 
 @router.post("/song")
-async def upload_song(audio: UploadFile = File(...), lyrics: str = Form(...)):
+async def song_to_embeddings(audio: UploadFile = File(...), lyrics: str = Form(...)):
     file_path = f"{hashlib.sha256(audio.filename.encode()).hexdigest()}.wav"
     file_path = f"{str(UPLOAD_DIR)}/{file_path}"
 

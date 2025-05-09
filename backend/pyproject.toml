@@ -3,7 +3,7 @@ name = "backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
   "einops>=0.8.0",
 
@@ -12,7 +12,7 @@ dependencies = [
   "essentia-tensorflow>=2.1b6.dev1177; sys_platform=='darwin'",
 
   # Linux: build from Git (will compile the library + TF wrappers)
-  "essentia @ git+https://github.com/MTG/essentia.git@master#egg=essentia; sys_platform=='linux'",
+  "essentia==2.1b6.dev1110; sys_platform=='linux'",
 
   "fastapi>=0.115.6",
   "googletrans>=4.0.2",

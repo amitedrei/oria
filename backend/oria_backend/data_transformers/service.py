@@ -73,7 +73,7 @@ image_to_text = pipeline(
     "image-to-text", model="nlpconnect/vit-gpt2-image-captioning", device=device
 )
 
-embedding_model = TensorflowPredictEffnetDiscogs(
+song_embedding_model = TensorflowPredictEffnetDiscogs(
     graphFilename=f"{ESSENTIA_MODELS_PATH}/discogs-effnet-bs64-1.pb",
     output="PartitionedCall:1",
 )
@@ -181,9 +181,9 @@ def is_dedanceable(embeddings):
 async def get_audio_description(audio_path):
     audio = MonoLoader(filename=str(audio_path), sampleRate=16000, resampleQuality=4)()
 
-    embeddings = embedding_model(audio)
+    embeddings = song_embedding_model(audio)
 
-    genre = f"{', '.join(get_audio_genre(embeddings))}"  # TODO
+    genre = f"{', '.join(get_audio_genre(embeddings))}"
     mood = f"{', '.join(get_audio_mood(embeddings))}"
     engagment = f"{get_engagment_level(embeddings)[0]}"
     danceable = f"{is_dedanceable(embeddings)[0]}"
@@ -327,7 +327,6 @@ async def extract_song_description(audio_path, lyrics):
 
 async def extract_song_embedding(audio_path, lyrics):
     desc = await extract_song_description(audio_path, lyrics)
-    print(desc)
     input_model = TextToEmbeddingsModel(text=desc)
     embeddings_result = await get_embeddings(input_model)
     return embeddings_result.embeddings
