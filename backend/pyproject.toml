@@ -13,6 +13,7 @@ dependencies = [
 
   # Linux: build from Git (will compile the library + TF wrappers)
   "essentia==2.1b6.dev1110; sys_platform=='linux'",
+  "essentia-tensorflow==2.1b6.dev1110; sys_platform=='linux'",
 
   "fastapi>=0.115.6",
   "googletrans>=4.0.2",
