@@ -206,7 +206,7 @@ async def identify_chorus_from_src(src_lyrics):
             chorus = chorus[:index]
             break
         else:
-            res = await translate_to_english(i)
+            res = translate_to_english(i)
             if "chorus" in res.lower():
                 index = src_lyrics.find(i)
                 if not index:
@@ -215,7 +215,7 @@ async def identify_chorus_from_src(src_lyrics):
                 chorus = src_lyrics[index + len(i) :]
 
     if chorus:
-        return await translate_to_english(chorus)
+        return translate_to_english(chorus)
     return chorus
 
 
@@ -288,7 +288,7 @@ async def identify_chorus(lyrics):
 async def get_lyrics_description(lyrics):
     chorus = await identify_chorus_from_src(lyrics)
     if not chorus:
-        en_lyrics = await translate_to_english(lyrics)
+        en_lyrics = translate_to_english(lyrics)
         chorus = await identify_chorus(en_lyrics)
 
     # extract emotions
