@@ -190,9 +190,9 @@ async def get_audio_description(audio_path):
     return genre, mood, engagment, danceable
 
 
-async def translate_to_english(text):
+def translate_to_english(text):
     translator = Translator()
-    translation = await translator.translate(text, dest="en")
+    translation = translator.translate(text, dest="en")
     return translation.text
 
 
