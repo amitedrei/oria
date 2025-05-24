@@ -353,3 +353,53 @@ async def get_song_for_post(data: UploadPost):
     desc = await get_description_for_post(data)
     embeddings_result = await get_embeddings(TextToEmbeddingsModel(text=desc))
     return embeddings_result
+
+
+async def extract_song_descriptions_v2(audio_path, lyrics):
+    genre, mood, engagment, danceable = await get_audio_description(audio_path)
+    if not mood:
+        mood = []
+    if danceable:
+        mood = f"{mood}, danceable"
+    if engagment:
+        mood = f"{mood}, engageable"
+
+    chorus, lyrics_emotions = await get_lyrics_description(lyrics)
+    if lyrics_emotions:
+        mood = f"{mood}, {lyrics_emotions}"
+
+    return genre, mood, chorus
+
+async def extract_song_embeddings_v2(audio_path, lyrics):
+    genre, mood, chorus = await extract_song_descriptions_v2(audio_path, lyrics)
+
+    input_model = TextToEmbeddingsModel(text=mood)
+    mood_embedding = await get_embeddings(input_model)
+
+    input_model = TextToEmbeddingsModel(text=mood)
+    chorus_embedding = await get_embeddings(input_model)
+
+    return genre, mood_embedding.embeddings, chorus_embedding.embeddings
+    
+
+async def get_embedding_for_post_v2(data: UploadPost):
+    model = ImageToTextModel(file=data.image)
+    response = await get_image_text(model)
+    image_as_text = response.text
+
+    input_model = TextToEmotionsModel(text=data.text)
+    emotions_result = await get_text_emotion(input_model)
+    sorted_emotions = sorted(
+        emotions_result.emotions, key=lambda x: x["score"], reverse=True
+    )
+    emotions = [
+        emotion["label"] for emotion in sorted_emotions if emotion["score"] > 0.65
+    ]
+
+    input_model = TextToEmbeddingsModel(text=f'{image_as_text}\n{data.text}')
+    description_embedding = await get_embeddings(input_model)
+
+    input_model = TextToEmbeddingsModel(text=emotions)
+    emotions_embedding = await get_embeddings(input_model)
+
+    return description_embedding.embeddings, emotions_embedding.embeddings
