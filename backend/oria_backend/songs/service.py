@@ -36,6 +36,7 @@ async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
     return [
         SongResponseModel(
             id=str(song["_id"]),
+            song_id=song['song_id'],
             name=song["name"],
             artists=song["artists"],
             url=song["url"],

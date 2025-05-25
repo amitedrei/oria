@@ -1,10 +1,10 @@
 from typing import List
 
 from pydantic import BaseModel
-from bson import ObjectId
 
 class SongResponseModel(BaseModel):
-    id: ObjectId
+    id: str
+    song_id: str
     name: str
     artists: List[str]
     url: str
