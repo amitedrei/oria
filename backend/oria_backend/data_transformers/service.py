@@ -190,9 +190,9 @@ async def get_audio_description(audio_path):
     return genre, mood, engagment, danceable
 
 
-def translate_to_english(text):
+async def translate_to_english(text):
     translator = Translator()
-    translation = translator.translate(text, dest="en")
+    translation = await translator.translate(text, dest="en")
     return translation.text
 
 
@@ -206,7 +206,7 @@ async def identify_chorus_from_src(src_lyrics):
             chorus = chorus[:index]
             break
         else:
-            res = translate_to_english(i)
+            res = await translate_to_english(i)
             if "chorus" in res.lower():
                 index = src_lyrics.find(i)
                 if not index:
@@ -215,7 +215,7 @@ async def identify_chorus_from_src(src_lyrics):
                 chorus = src_lyrics[index + len(i) :]
 
     if chorus:
-        return translate_to_english(chorus)
+        return await translate_to_english(chorus)
     return chorus
 
 
@@ -288,7 +288,7 @@ async def identify_chorus(lyrics):
 async def get_lyrics_description(lyrics):
     chorus = await identify_chorus_from_src(lyrics)
     if not chorus:
-        en_lyrics = translate_to_english(lyrics)
+        en_lyrics = await translate_to_english(lyrics)
         chorus = await identify_chorus(en_lyrics)
 
     # extract emotions
@@ -318,71 +318,22 @@ async def extract_song_description(audio_path, lyrics):
     if lyrics_emotions:
         mood = f"{mood}, {lyrics_emotions}"
 
-    return generate_song_to_embeddings_prompt(
-        genre=genre,
-        mood=mood if isinstance(mood, str) else ", ".join(mood),
-        description=chorus,
-    )
-
-
-async def extract_song_embedding(audio_path, lyrics):
-    desc = await extract_song_description(audio_path, lyrics)
-    input_model = TextToEmbeddingsModel(text=desc)
-    embeddings_result = await get_embeddings(input_model)
-    return embeddings_result.embeddings
-
-
-async def get_description_for_post(data: UploadPost):
-    model = ImageToTextModel(file=data.image)
-    response = await get_image_text(model)
-    image_as_text = response.text
-
-    input_model = TextToEmotionsModel(text=data.text)
-    emotions_result = await get_text_emotion(input_model)
-    sorted_emotions = sorted(
-        emotions_result.emotions, key=lambda x: x["score"], reverse=True
-    )
-    emotions = [
-        emotion["label"] for emotion in sorted_emotions if emotion["score"] > 0.65
-    ]
-
-    return generate_image_to_embeddings_prompt(image_as_text, emotions, data.text)
-
-
-async def get_song_for_post(data: UploadPost):
-    desc = await get_description_for_post(data)
-    embeddings_result = await get_embeddings(TextToEmbeddingsModel(text=desc))
-    return embeddings_result
-
-
-async def extract_song_descriptions_v2(audio_path, lyrics):
-    genre, mood, engagment, danceable = await get_audio_description(audio_path)
-    if not mood:
-        mood = []
-    if danceable:
-        mood = f"{mood}, danceable"
-    if engagment:
-        mood = f"{mood}, engageable"
-
-    chorus, lyrics_emotions = await get_lyrics_description(lyrics)
-    if lyrics_emotions:
-        mood = f"{mood}, {lyrics_emotions}"
-
     return genre, mood, chorus
 
-async def extract_song_embeddings_v2(audio_path, lyrics):
-    genre, mood, chorus = await extract_song_descriptions_v2(audio_path, lyrics)
+
+async def extract_song_embeddings(audio_path, lyrics):
+    genre, mood, chorus = await extract_song_description(audio_path, lyrics)
 
     input_model = TextToEmbeddingsModel(text=mood)
     mood_embedding = await get_embeddings(input_model)
 
-    input_model = TextToEmbeddingsModel(text=mood)
+    input_model = TextToEmbeddingsModel(text=chorus)
     chorus_embedding = await get_embeddings(input_model)
 
     return genre, mood_embedding.embeddings, chorus_embedding.embeddings
     
 
-async def get_embedding_for_post_v2(data: UploadPost):
+async def get_embeddings_for_post(data: UploadPost):
     model = ImageToTextModel(file=data.image)
     response = await get_image_text(model)
     image_as_text = response.text

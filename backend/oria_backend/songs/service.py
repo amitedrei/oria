@@ -25,8 +25,9 @@ async def get_all_songs() -> List[SongResponseModel]:
 
 async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
     song_data = await get_song_for_post_data(data.text, data.image)
-    embedding = song_data.embeddings
-    similar_songs = await mongodb.find_similar_songs(embedding, 5)
+    description_embedding = song_data[0]
+    emotions_embedding = song_data[1]
+    similar_songs = await mongodb.find_similar_songs(description_embedding, 5)
 
     return [
         SongResponseModel(

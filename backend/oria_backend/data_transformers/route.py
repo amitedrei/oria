@@ -21,10 +21,10 @@ from .models import (
 )
 from .service import (
     calculate_distance,
-    extract_song_embedding,
+    extract_song_embeddings,
     get_embeddings,
     get_image_text,
-    get_song_for_post,
+    get_embeddings_for_post,
     get_text_emotion,
 )
 
@@ -73,7 +73,7 @@ async def song_to_embeddings(audio: UploadFile = File(...), lyrics: str = Form(.
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(audio.file, buffer)
 
-    embedding = await extract_song_embedding(file_path, lyrics)
+    embedding = await extract_song_embeddings(file_path, lyrics)
     os.remove(file_path)
     return embedding
 
@@ -82,4 +82,4 @@ async def song_to_embeddings(audio: UploadFile = File(...), lyrics: str = Form(.
 async def get_song_for_post_data(
     text: Annotated[str, Form()], image: UploadFile = File(...)
 ):
-    return await get_song_for_post(UploadPost(text=text, image=image))
+    return await get_embeddings_for_post(UploadPost(text=text, image=image))

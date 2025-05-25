@@ -1,5 +1,4 @@
 from typing import Any, Dict, List
-
 import numpy as np
 from motor.motor_asyncio import AsyncIOMotorClient
 from oria_backend.config import settings
@@ -22,13 +21,27 @@ class MongoDB:
         return await cursor.to_list(length=None)
 
     async def find_similar_songs(
-        self, embedding: List[float], n: int
+        self, 
+        description_embedding: List[float], 
+        emotions_embedding: List[float],
+        n: int,
+        description_weight: float = 0.6,
+        emotion_weight: float = 0.4
     ) -> List[Dict[str, Any]]:
+        
         all_songs = await self.get_all_songs()
+        
         for song in all_songs:
-            song["distance"] = np.linalg.norm(
-                np.array(embedding) - np.array(song["embedding"])
+            desc_distance = np.linalg.norm(
+                np.array(description_embedding) - np.array(song["description_embedding"])
             )
+            emotion_distance = np.linalg.norm(
+                np.array(emotions_embedding) - np.array(song["emotion_embedding"])
+            )
+            
+            song["distance"] = (description_weight * desc_distance + 
+                            emotion_weight * emotion_distance)
+        
         return sorted(all_songs, key=lambda x: x["distance"])[:n]
 
     async def close(self):
