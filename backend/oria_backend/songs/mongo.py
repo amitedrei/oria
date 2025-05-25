@@ -25,9 +25,14 @@ class MongoDB:
         description_embedding: List[float], 
         emotions_embedding: List[float],
         n: int,
-        description_weight: float = 0.6,
-        emotion_weight: float = 0.4
+        description_weight: float = 0.6
     ) -> List[Dict[str, Any]]:
+        
+        if not (0 <= description_weight <= 1):
+            ValueError('description_weight must be a float in [0, 1]')
+        
+        emotion_weight = 1 - description_weight
+        
         
         all_songs = await self.get_all_songs()
         
