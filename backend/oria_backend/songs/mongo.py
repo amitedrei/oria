@@ -31,7 +31,7 @@ class MongoDB:
         if not (0 <= description_weight <= 1):
             ValueError('description_weight must be a float in [0, 1]')
         
-        if emotions_embedding is not None:
+        if emotions_embedding is None:
             description_weight = 1
 
         emotion_weight = 1 - description_weight
@@ -45,7 +45,7 @@ class MongoDB:
 
             if emotion_weight:
                 emotion_distance = np.linalg.norm(
-                    np.array(emotions_embedding) - np.array(song["emotion_embedding"])
+                    np.array(emotions_embedding) - np.array(song["mood_embedding"])
                 )
             else:
                 emotion_distance = 0
@@ -53,7 +53,7 @@ class MongoDB:
             song["distance"] = (description_weight * desc_distance + 
                             emotion_weight * emotion_distance)
         
-        return sorted(all_songs, key=lambda x: x["distance"])[:max(n, len(all_songs))]
+        return sorted(all_songs, key=lambda x: x["distance"])[:min(n, len(all_songs))]
 
     async def close(self):
         await self.client.close()

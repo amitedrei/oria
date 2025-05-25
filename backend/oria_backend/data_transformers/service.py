@@ -337,8 +337,8 @@ async def get_embeddings_for_post(data: UploadPost):
     model = ImageToTextModel(file=data.image)
     response = await get_image_text(model)
     image_as_text = response.text
-
     emotions = None
+    
     if data.text:
         input_model = TextToEmotionsModel(text=data.text)
         emotions_result = await get_text_emotion(input_model)
