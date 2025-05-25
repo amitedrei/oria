@@ -4,6 +4,7 @@ from oria_backend.data_transformers.models import UploadPost
 from oria_backend.data_transformers.route import get_song_for_post_data
 from oria_backend.songs.models import SongResponseModel
 from oria_backend.songs.mongo import mongodb
+from bson import ObjectId
 
 
 async def get_all_songs() -> List[SongResponseModel]:
@@ -34,7 +35,7 @@ async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
 
     return [
         SongResponseModel(
-            id=song["_id"],
+            id=str(song["_id"]),
             name=song["name"],
             artists=song["artists"],
             url=song["url"],
