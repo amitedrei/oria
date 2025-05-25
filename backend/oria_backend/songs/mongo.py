@@ -14,7 +14,7 @@ class MongoDB:
             ssl=True,
         )
         self.db = self.client[settings.mongo_db_name]
-        self.songs_collection = self.db.songs
+        self.songs_collection = self.db.songs_v2
 
     async def get_all_songs(self) -> List[Dict[str, Any]]:
         cursor = self.songs_collection.find()
