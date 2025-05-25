@@ -33,7 +33,7 @@ class MongoDB:
         
         for song in all_songs:
             desc_distance = np.linalg.norm(
-                np.array(description_embedding) - np.array(song["description_embedding"])
+                np.array(description_embedding) - np.array(song["chorus_embedding"])
             )
             emotion_distance = np.linalg.norm(
                 np.array(emotions_embedding) - np.array(song["emotion_embedding"])

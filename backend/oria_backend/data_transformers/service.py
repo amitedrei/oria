@@ -343,6 +343,7 @@ async def get_embeddings_for_post(data: UploadPost):
     sorted_emotions = sorted(
         emotions_result.emotions, key=lambda x: x["score"], reverse=True
     )
+
     emotions = [
         emotion["label"] for emotion in sorted_emotions if emotion["score"] > 0.65
     ]
@@ -350,7 +351,7 @@ async def get_embeddings_for_post(data: UploadPost):
     input_model = TextToEmbeddingsModel(text=f'{image_as_text}\n{data.text}')
     description_embedding = await get_embeddings(input_model)
 
-    input_model = TextToEmbeddingsModel(text=emotions)
+    input_model = TextToEmbeddingsModel(text=','.join(emotions))
     emotions_embedding = await get_embeddings(input_model)
 
     return description_embedding.embeddings, emotions_embedding.embeddings
