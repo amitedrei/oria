@@ -88,6 +88,8 @@ function UploadPage({ onNavigate }) {
       formData.append('image', imageFile);
       formData.append('text', additionalText);
 
+      console.log('Submitting form data:', formData);
+
       const response = await fetch('/songs/find-songs', {
         method: 'POST',
         body: formData,
