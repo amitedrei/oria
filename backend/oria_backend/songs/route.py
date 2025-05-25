@@ -14,5 +14,5 @@ async def get_songs():
 
 @router.post("/find-songs")
 async def find_songs(text: str = Form(...), image: UploadFile = File(...)):
-    find_song_data = UploadPost(text=text or " ", image=image)
+    find_song_data = UploadPost(text='' or text, image=image)
     return await find_top_songs(find_song_data)

@@ -80,6 +80,6 @@ async def song_to_embeddings(audio: UploadFile = File(...), lyrics: str = Form(.
 
 @router.post("/post")
 async def get_song_for_post_data(
-    text: Annotated[str, Form()], image: UploadFile = File(...)
+    text: str = Form(...), image: UploadFile = File(...)
 ):
     return await get_embeddings_for_post(UploadPost(text=text, image=image))

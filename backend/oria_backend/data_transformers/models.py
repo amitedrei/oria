@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from fastapi import UploadFile, File, Form
+from typing import Optional
 
 
 class TextToEmbeddingsModel(BaseModel):
@@ -42,8 +43,9 @@ class UploadSong(BaseModel):
 
 
 class UploadPost(BaseModel):
-    text: str
+    text: Optional[str] = ""
     image: UploadFile
+
 
 class UploadPostResponse(BaseModel):
     url: str
