@@ -12,3 +12,7 @@ class SongResponseModel(BaseModel):
     source: str
     playlists: List[str]
     distance: float
+
+
+class SongEmotionsResponseModel(BaseModel):
+    emotions: dict[str, float]
