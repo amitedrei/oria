@@ -35,7 +35,7 @@ class MongoDB:
             emotions_embedding = description_embedding
 
         all_songs = await self.get_all_songs()
-        
+
         for song in all_songs:
             emotion_distance = np.linalg.norm(
                 np.array(emotions_embedding) - np.array(song["mood_embedding"])
@@ -53,7 +53,7 @@ class MongoDB:
             song['chorus_distance'] = chorus_distance
         
 
-        return sorted(all_songs, key=lambda x: x["chorus_distance"])[:min(n, len(all_songs))]
+        return sorted(sorted_songs, key=lambda x: x["chorus_distance"])[:min(n, len(sorted_songs))]
 
     async def close(self):
         await self.client.close()
