@@ -33,6 +33,8 @@ async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
                                                      emotions_embedding=emotions_embedding,
                                                      n=5
                                                      )
+    
+
 
     return [
         SongResponseModel(
@@ -44,7 +46,7 @@ async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
             thumbnail=song["thumbnail"],
             source=song["source"],
             playlists=song["playlists"],
-            distance=song["distance"],
+            distance=song["chorus_distance"],
         )
         for song in similar_songs
     ]
