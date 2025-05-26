@@ -11,7 +11,8 @@ async def get_all_songs() -> List[SongResponseModel]:
     songs = await mongodb.get_all_songs()
     return [
         SongResponseModel(
-            id=song["_id"],
+            id=str(song["_id"]),
+            song_id=song["song_id"],
             name=song["name"],
             artists=song["artists"],
             url=song["url"],

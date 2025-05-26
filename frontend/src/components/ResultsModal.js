@@ -3,7 +3,7 @@ import Modal from './Modal';
 import './ResultsModal.css';
 
 function ResultsModal({ isOpen, onClose, songs }) {
-    const sortedSongs = songs.sort((a, b) => b.distance - a.distance);
+    const sortedSongs = songs.sort((a, b) => a.distance - b.distance);
     const [playingId, setPlayingId] = React.useState(null);
     const [loadingId, setLoadingId] = React.useState(null);
     const [progress, setProgress] = React.useState(0);
@@ -77,7 +77,7 @@ function ResultsModal({ isOpen, onClose, songs }) {
             title="Top Matching Songs"
         >
             <div className="results-container">
-                {sortedSongs.map(song => (
+                {sortedSongs.map((song,index) => (
                     <div key={song.id} className="song-result-item">
                         <div className="song-info">
                             <div className="song-title">{song.name}</div>
@@ -94,7 +94,7 @@ function ResultsModal({ isOpen, onClose, songs }) {
                             )}
                         </div>
                         <div className="match-info">
-                            <div className="match-percentage">{Math.round(song.distance * 100)}%</div>
+                            <div className="match-rank">{index+1}</div>
                             <div className="progress-bar">
                                 <div
                                     className="progress-fill"
