@@ -30,30 +30,30 @@ class MongoDB:
         
         if not (0 <= description_weight <= 1):
             ValueError('description_weight must be a float in [0, 1]')
-        
-        if emotions_embedding is None:
-            description_weight = 1
 
-        emotion_weight = 1 - description_weight
-        
+        if not emotions_embedding:
+            emotions_embedding = description_embedding
+
         all_songs = await self.get_all_songs()
         
         for song in all_songs:
-            desc_distance = np.linalg.norm(
-                np.array(description_embedding) - np.array(song["chorus_embedding"])
+            emotion_distance = np.linalg.norm(
+                np.array(emotions_embedding) - np.array(song["mood_embedding"])
+            )    
+
+            song['emotion_distance'] = emotion_distance
+
+        sorted_songs = sorted(all_songs, key=lambda x: x['emotion_distance'])[:min(n*4, len(all_songs))]
+        
+        for song in sorted_songs:
+            chorus_distance = np.linalg.norm(
+                np.array(description_embedding) - np.array(song['chorus_embedding'])
             )
 
-            if emotion_weight:
-                emotion_distance = np.linalg.norm(
-                    np.array(emotions_embedding) - np.array(song["mood_embedding"])
-                )
-            else:
-                emotion_distance = 0
-            
-            song["distance"] = (description_weight * desc_distance + 
-                            emotion_weight * emotion_distance)
+            song['chorus_distance'] = chorus_distance
         
-        return sorted(all_songs, key=lambda x: x["distance"])[:min(n, len(all_songs))]
+
+        return sorted(all_songs, key=lambda x: x["chorus_distance"])[:min(n, len(all_songs))]
 
     async def close(self):
         await self.client.close()
