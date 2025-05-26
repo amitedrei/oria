@@ -77,7 +77,7 @@ function ResultsModal({ isOpen, onClose, songs }) {
             title="Top Matching Songs"
         >
             <div className="results-container">
-                {sortedSongs.map((song,index) => (
+            {sortedSongs.map((song,index) => (
                     <div key={song.id} className="song-result-item">
                         <div className="song-info">
                             <div className="song-title">{song.name}</div>
@@ -95,12 +95,6 @@ function ResultsModal({ isOpen, onClose, songs }) {
                         </div>
                         <div className="match-info">
                             <div className="match-rank">{index+1}</div>
-                            <div className="progress-bar">
-                                <div
-                                    className="progress-fill"
-                                    style={{ width: `${Math.round(song.distance * 100)}%` }}
-                                ></div>
-                            </div>
                         </div>
                         <div className="song-player">
                             <button

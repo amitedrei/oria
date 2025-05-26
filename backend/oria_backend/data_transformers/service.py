@@ -17,6 +17,7 @@ from transformers import (
     pipeline,
 )
 
+from googletrans import Translator
 from oria_backend.data_transformers.prompts.image_to_embeddings import (
     generate_image_to_embeddings_prompt,
 )
@@ -337,28 +338,76 @@ async def get_embeddings_for_post(data: UploadPost):
     model = ImageToTextModel(file=data.image)
     response = await get_image_text(model)
     image_as_text = response.text
-    emotions = None
+    sorted_emotions = {}
+    emotions_result = None
+    data_text = ''
     
     if data.text:
-        input_model = TextToEmotionsModel(text=data.text)
+        try:
+            data_text = await translate_to_english(data_text)
+        except Exception as e:
+            data_text = data.text
+            print(e)
+
+        input_model = TextToEmotionsModel(text=data_text)
         emotions_result = await get_text_emotion(input_model)
         sorted_emotions = sorted(
             emotions_result.emotions, key=lambda x: x["score"], reverse=True
         )
 
-        emotions = [
-            emotion["label"] for emotion in sorted_emotions if emotion["score"] > 0.65
-        ]
-
-    input_model = TextToEmbeddingsModel(text=f'{image_as_text}\n{data.text}')
+    input_model = TextToEmbeddingsModel(text=f'{image_as_text}\n{data_text}')
     description_embedding = await get_embeddings(input_model)
 
-    emotions_result = None
-    if emotions:
-        input_model = TextToEmbeddingsModel(text=sorted_emotions[0]['label'])
+    emotions = [
+        emotion["label"] for emotion in sorted_emotions if emotion["score"] > 0.85
+        ]
+    
+    if emotions or sorted_emotions:
+        input_model = TextToEmbeddingsModel(text=','.join(emotions) or sorted_emotions[0]['label'])
         emotions_embedding = await get_embeddings(input_model)
         emotions_result = emotions_embedding.embeddings
 
+    return description_embedding.embeddings, emotions_result
+
+async def get_embeddings_for_post(data: UploadPost):
+    model = ImageToTextModel(file=data.image)
+    response = await get_image_text(model)
+    image_as_text = response.text
     
+    data_text = ''
+    emotions_result = None
+    
+    if data.text:
+        try:
+            data_text = await translate_to_english(data.text)
+        except Exception as e:
+            data_text = data.text
+            print(f"Translation failed: {e}")
+
+        input_model = TextToEmotionsModel(text=data_text)
+        emotions_response = await get_text_emotion(input_model)
+        sorted_emotions = sorted(
+            emotions_response.emotions, key=lambda x: x["score"], reverse=True
+        )
+        
+        # high_confidence_emotions = [
+        #     emotion["label"] for emotion in sorted_emotions 
+        #     if emotion["score"] > 0.85
+        # ]
+        #
+        # if high_confidence_emotions:
+        #     emotions_text = ','.join(high_confidence_emotions)
+        if sorted_emotions: 
+            emotions_text = sorted_emotions[0]['label']
+        else:
+            emotions_text = None
+            
+        if emotions_text:
+            emotions_model = TextToEmbeddingsModel(text=emotions_text)
+            emotions_embedding = await get_embeddings(emotions_model)
+            emotions_result = emotions_embedding.embeddings
+
+    description_model = TextToEmbeddingsModel(text=f'{image_as_text}\n{data_text}' if data_text else image_as_text)
+    description_embedding = await get_embeddings(description_model)
 
     return description_embedding.embeddings, emotions_result
