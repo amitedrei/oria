@@ -1,7 +1,11 @@
 from typing import List
 
-from oria_backend.data_transformers.models import UploadPost
-from oria_backend.data_transformers.route import get_song_for_post_data
+from fastapi import UploadFile
+
+from oria_backend.data_transformers.service import (
+    extract_description_from_image,
+    get_embeddings,
+)
 from oria_backend.songs.models import SongResponseModel
 from oria_backend.songs.mongo import mongodb
 
@@ -23,10 +27,14 @@ async def get_all_songs() -> List[SongResponseModel]:
     ]
 
 
-async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
-    song_data = await get_song_for_post_data(data.text, data.image)
-    embedding = song_data.embeddings
-    similar_songs = await mongodb.find_similar_songs(embedding, 5)
+async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseModel]:
+    image_description = extract_description_from_image(image)
+    combined_query = f"{image_description}. Caption: {caption}"
+    query_embedding = get_embeddings(combined_query)
+
+    similar_songs = await mongodb.find_similar_songs(
+        query_embedding, 5, document_embedding_field="name-embedding"
+    )
 
     return [
         SongResponseModel(
