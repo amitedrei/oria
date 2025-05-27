@@ -33,7 +33,7 @@ async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseMo
     query_embedding = get_embeddings(combined_query)
 
     similar_songs = await mongodb.find_similar_songs(
-        query_embedding, 5, document_embedding_field="name-embedding"
+        query_embedding, 5, document_embedding_field="name_embedding"
     )
 
     return [

@@ -13,7 +13,7 @@ from .service import (
 router = APIRouter(prefix="/data-transformers", tags=["Data Transformers"])
 
 
-@router.post("/test-to-embeddings")
+@router.post("/text-to-embeddings")
 async def text_to_embeddings(data: TextToEmbeddingsModel) -> EmbeddingsResponseModel:
     embeddings = get_embeddings(data.text)
 
