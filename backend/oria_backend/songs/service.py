@@ -34,15 +34,9 @@ async def get_all_songs() -> List[SongResponseModel]:
 
 def find_top_songs_by_name(
     songs: list[dict[str, Any]],
-    image_description: str,
-    caption: str,
     n: int,
-    query_embedding: list[float] | None = None,
+    query_embedding: list[float],
 ) -> tuple[str, list[dict[str, Any]]]:
-    if query_embedding is None:
-        combined_query = f"{image_description}. Caption: {caption}"
-        query_embedding = get_embeddings(combined_query)
-
     distance_field, closest_documents = get_n_closest_embedding_documents(
         songs, query_embedding, embedding_field=NAME_EMBEDDING_FIELD
     )
@@ -52,15 +46,9 @@ def find_top_songs_by_name(
 
 def find_top_songs_by_lyrics(
     songs: list[dict[str, Any]],
-    image_description: str,
-    caption: str,
     n: int,
-    query_embedding: list[float] | None = None,
+    query_embedding: list[float],
 ) -> tuple[str, list[dict[str, Any]]]:
-    if query_embedding is None:
-        combined_query = f"{image_description}. Caption: {caption}"
-        query_embedding = get_embeddings(combined_query)
-
     distance_field, closest_documents = get_n_closest_embedding_documents(
         songs, query_embedding, embedding_field=LYRICS_EMBEDDING_FIELD
     )
@@ -74,9 +62,14 @@ async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseMo
 
     image_description = extract_description_from_image(image)
 
+    combined_query = f"{image_description}. Caption: {caption}"
+    query_embedding = get_embeddings(combined_query)
+
     for i, song_filter in enumerate([find_top_songs_by_name, find_top_songs_by_lyrics]):
         distance_field, top_songs = song_filter(
-            top_songs, image_description, caption, SONGS_FILTER_AMOUNTS[i]
+            top_songs,
+            SONGS_FILTER_AMOUNTS[i],
+            query_embedding,
         )
         distance_fields.append(distance_field)
 
