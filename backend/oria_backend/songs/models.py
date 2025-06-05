@@ -11,4 +11,5 @@ class SongResponseModel(BaseModel):
     thumbnail: str
     source: str
     playlists: List[str]
-    distance: float
+    distances: dict[str, float] = {}
+    distance: float = -1

@@ -1,9 +1,18 @@
-from typing import List
+from typing import Any, List
 
-from oria_backend.data_transformers.models import UploadPost
-from oria_backend.data_transformers.route import get_song_for_post_data
+from fastapi import UploadFile
+from oria_backend.data_transformers.service import (
+    extract_description_from_image,
+    get_embeddings,
+)
 from oria_backend.songs.models import SongResponseModel
 from oria_backend.songs.mongo import mongodb
+from oria_backend.utils import get_n_closest_embedding_documents
+
+SONGS_FILTER_AMOUNTS = [20, 10, 5]
+NAME_EMBEDDING_FIELD = "name_embedding"
+LYRICS_EMBEDDING_FIELD = "lyrics_embedding"
+TOP_SONGS_AMOUNT = 5
 
 
 async def get_all_songs() -> List[SongResponseModel]:
@@ -17,16 +26,52 @@ async def get_all_songs() -> List[SongResponseModel]:
             thumbnail=song["thumbnail"],
             source=song["source"],
             playlists=song["playlists"],
-            distance=-1,
+            distances={},
         )
         for song in songs
     ]
 
 
-async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
-    song_data = await get_song_for_post_data(data.text, data.image)
-    embedding = song_data.embeddings
-    similar_songs = await mongodb.find_similar_songs(embedding, 5)
+def find_top_songs_by_name(
+    songs: list[dict[str, Any]],
+    n: int,
+    query_embedding: list[float],
+) -> tuple[str, list[dict[str, Any]]]:
+    distance_field, closest_documents = get_n_closest_embedding_documents(
+        songs, query_embedding, embedding_field=NAME_EMBEDDING_FIELD
+    )
+
+    return distance_field, closest_documents[:n]
+
+
+def find_top_songs_by_lyrics(
+    songs: list[dict[str, Any]],
+    n: int,
+    query_embedding: list[float],
+) -> tuple[str, list[dict[str, Any]]]:
+    distance_field, closest_documents = get_n_closest_embedding_documents(
+        songs, query_embedding, embedding_field=LYRICS_EMBEDDING_FIELD
+    )
+
+    return distance_field, closest_documents[:n]
+
+
+async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseModel]:
+    top_songs = await mongodb.get_all_songs()
+    distance_fields: list[str] = []
+
+    image_description = extract_description_from_image(image)
+
+    combined_query = f"{image_description}. Caption: {caption}"
+    query_embedding = get_embeddings(combined_query)
+
+    for i, song_filter in enumerate([find_top_songs_by_name, find_top_songs_by_lyrics]):
+        distance_field, top_songs = song_filter(
+            top_songs,
+            SONGS_FILTER_AMOUNTS[i],
+            query_embedding,
+        )
+        distance_fields.append(distance_field)
 
     return [
         SongResponseModel(
@@ -37,7 +82,11 @@ async def find_top_songs(data: UploadPost) -> List[SongResponseModel]:
             thumbnail=song["thumbnail"],
             source=song["source"],
             playlists=song["playlists"],
-            distance=song["distance"],
+            distances={field: song[field] for field in distance_fields},
+            distance=sum(song[field] for field in distance_fields if field in song)
+            / len(distance_fields)
+            if distance_fields
+            else -1,
         )
-        for song in similar_songs
+        for song in top_songs[:TOP_SONGS_AMOUNT]
     ]

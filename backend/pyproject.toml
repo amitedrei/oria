@@ -5,16 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "einops>=0.8.0",
-
-  # macOS: grab the prebuilt TF-enabled dev wheels
-  "essentia>=2.1b6.dev1177; sys_platform=='darwin'",
-  "essentia-tensorflow>=2.1b6.dev1177; sys_platform=='darwin'",
-
-  # Linux: build from Git (will compile the library + TF wrappers)
-  "essentia==2.1b6.dev1110; sys_platform=='linux'",
-  "essentia-tensorflow==2.1b6.dev1110; sys_platform=='linux'",
-
+  "einops>=0.8.1",
   "fastapi>=0.115.6",
   "googletrans>=4.0.2",
   "loguru>=0.7.3",
