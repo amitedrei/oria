@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from motor.motor_asyncio import AsyncIOMotorClient
+from oria_backend.utils import timed_cache
 from oria_backend.config import settings
 
 
@@ -14,11 +15,12 @@ class MongoDB:
             ssl=True,
         )
         self.db = self.client[settings.mongo_db_name]
-        self.songs_collection = self.db.song_v4
+        self.songs_collection = self.db.songs_v4
 
     def __del__(self):
         self.close()
 
+    @timed_cache(ttl_seconds=300)
     async def get_all_songs(self) -> List[Dict[str, Any]]:
         cursor = self.songs_collection.find()
         return await cursor.to_list(length=None)

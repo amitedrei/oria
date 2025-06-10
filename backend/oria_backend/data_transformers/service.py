@@ -37,11 +37,20 @@ def get_embeddings(text: str) -> list[float]:
     return embeddings.tolist()[0]
 
 
-def extract_description_from_image(image: UploadFile) -> str:
+def get_image_from_upload_file(image: UploadFile) -> Image.Image:
     image_bytes = image.file.read()
     pil_image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    inputs = image_processor(images=pil_image, return_tensors="pt")
+    return pil_image
+
+
+def extract_data_from_image(image: Image.Image, task: str) -> str:
+    inputs = image_processor(images=image, text=task, return_tensors="pt")
     device = next(image_model.parameters()).device
     inputs = {k: v.to(device) for k, v in inputs.items()}
     out = image_model.generate(**inputs)
     return image_processor.decode(out[0], skip_special_tokens=True)
+
+
+def extract_description_from_image(image: Image.Image) -> str:
+    return extract_data_from_image(image, "a photography of")
+

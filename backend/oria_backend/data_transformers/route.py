@@ -8,6 +8,7 @@ from .models import (
 from .service import (
     extract_description_from_image,
     get_embeddings,
+    get_image_from_upload_file,
 )
 
 router = APIRouter(prefix="/data-transformers", tags=["Data Transformers"])
@@ -22,5 +23,7 @@ async def text_to_embeddings(data: TextToEmbeddingsModel) -> EmbeddingsResponseM
 
 @router.post("/image-to-text")
 async def image_to_text(image: UploadFile = File(...)) -> ImageToTextResponseModel:
-    image_description = extract_description_from_image(image)
+    image_description = extract_description_from_image(
+        get_image_from_upload_file(image)
+    )
     return ImageToTextResponseModel(image_description=image_description)
