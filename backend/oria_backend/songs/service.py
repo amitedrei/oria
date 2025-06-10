@@ -14,7 +14,7 @@ NAME_EMBEDDING_FIELD = "name_embedding"
 LYRICS_EMBEDDING_FIELD = "lyrics_embedding"
 CHORUS_EMBEDDING_FIELD = "chorus_embedding"
 TOP_SONGS_AMOUNT = 5
-MAX_SONGS_CUT = 16
+MAX_SONGS_CUT = 5
 
 
 async def get_all_songs() -> List[SongResponseModel]:
@@ -89,10 +89,9 @@ async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseMo
 
     image_obj = get_image_from_upload_file(image)
     image_description = extract_description_from_image(image_obj)
-    combined_description = f"Image: '{image_description}'. Caption: '{caption}'"
+    combined_description = f"'{image_description}'. Caption: '{caption}'"
     combined_embedding = get_embeddings(combined_description)
     image_embedding = get_embeddings(image_description)
-    caption_embedding = get_embeddings(caption)
 
     logger.info(f'Image description: "{image_description}"')
     logger.info(f'Caption: "{caption}"')
