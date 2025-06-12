@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { ArrowRight, X, Loader } from 'lucide-react';
-import ResultsModal from '../components/ResultsModal';
+import { ArrowRight, Loader, X } from "lucide-react";
+import { useRef, useState } from "react";
+import ResultsModal from "../components/ResultsModal";
 
 function UploadPage({ onNavigate }) {
   const [dragActive, setDragActive] = useState(false);
   const [imageFile, setImageFile] = useState(null);
-  const [additionalText, setAdditionalText] = useState('');
+  const [additionalText, setAdditionalText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
@@ -15,7 +15,7 @@ function UploadPage({ onNavigate }) {
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
     } else if (e.type === "dragleave") {
@@ -27,10 +27,10 @@ function UploadPage({ onNavigate }) {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith("image/")) {
         handleFiles(file);
       } else {
         showAlert("Please upload an image file");
@@ -80,23 +80,23 @@ function UploadPage({ onNavigate }) {
       showAlert("Please upload an image first");
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const formData = new FormData();
-      formData.append('image', imageFile);
-      formData.append('text', additionalText);
+      formData.append("image", imageFile);
+      formData.append("text", additionalText);
 
-      console.log('Submitting form data:', formData);
+      console.log("Submitting form data:", formData);
 
-      const response = await fetch('/songs/find-songs', {
-        method: 'POST',
+      const response = await fetch("/songs/find-songs", {
+        method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch songs');
+        throw new Error("Failed to fetch songs");
       }
 
       const data = await response.json();
@@ -104,7 +104,7 @@ function UploadPage({ onNavigate }) {
       setShowResultsModal(true);
     } catch (error) {
       showAlert("Failed to process your request. Please try again.");
-      console.error('Error:', error);
+      console.error("Error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -113,9 +113,11 @@ function UploadPage({ onNavigate }) {
   return (
     <div className="card">
       <h1 className="upload-title">Lets find your perfect song</h1>
-      
-      <div 
-        className={`upload-area ${dragActive ? "active" : ""} ${imageFile ? "has-image" : ""}`}
+
+      <div
+        className={`upload-area ${dragActive ? "active" : ""} ${
+          imageFile ? "has-image" : ""
+        }`}
         onClick={imageFile ? null : onButtonClick}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -125,13 +127,13 @@ function UploadPage({ onNavigate }) {
         {imageFile ? (
           <div className="preview-container">
             <div className="image-preview-wrapper">
-              <img 
-                src={URL.createObjectURL(imageFile)} 
-                alt="Preview" 
-                className="image-preview" 
+              <img
+                src={URL.createObjectURL(imageFile)}
+                alt="Preview"
+                className="image-preview"
               />
-              <button 
-                className="remove-button" 
+              <button
+                className="remove-button"
                 onClick={removeImage}
                 aria-label="Remove image"
                 disabled={isLoading}
@@ -154,25 +156,27 @@ function UploadPage({ onNavigate }) {
           style={{ display: "none" }}
         />
       </div>
-      
-      <input 
-        type="text" 
-        className="input-field" 
-        placeholder="Type your additional text" 
+
+      <input
+        type="text"
+        className="input-field"
+        placeholder="Type your additional text"
         value={additionalText}
         disabled={isLoading}
         onChange={(e) => setAdditionalText(e.target.value)}
       />
-      
+
       <button className="button" onClick={handleSubmit} disabled={isLoading}>
-        <span className="button-text">{isLoading ? "processing..." : "continue"}</span>
+        <span className="button-text">
+          {isLoading ? "processing..." : "continue"}
+        </span>
         {isLoading ? (
           <Loader size={16} className="spinner" />
         ) : (
           <ArrowRight size={16} />
         )}
       </button>
-      
+
       {alertMessage && (
         <div className="alert-overlay">
           <div className="alert-dialog">
@@ -184,7 +188,7 @@ function UploadPage({ onNavigate }) {
         </div>
       )}
 
-      <ResultsModal 
+      <ResultsModal
         isOpen={showResultsModal}
         onClose={() => setShowResultsModal(false)}
         songs={searchResults}
