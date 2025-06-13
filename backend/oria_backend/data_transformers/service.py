@@ -303,4 +303,4 @@ async def get_embeddings_for_post(data: UploadPost):
 
     input_model = TextToEmbeddingsModel(text=emotions)
     emotions_embedding = await get_embeddings(input_model)
-    return post_emmbedings, emotions_embedding.embeddings
+    return post_emmbedings, emotions_embedding.embeddings, 
