@@ -21,10 +21,10 @@ from .models import (
 )
 from .service import (
     calculate_distance,
-    extract_song_embedding,
+    extract_song_embeddings,
     get_embeddings,
     get_image_text,
-    get_song_for_post,
+    get_embeddings_for_post,
     get_text_emotion,
 )
 
@@ -66,20 +66,26 @@ async def upload_image(file: UploadFile = File(...)) -> TextResponseModel:
 
 
 @router.post("/song")
-async def song_to_embeddings(audio: UploadFile = File(...), lyrics: str = Form(...)):
+async def song_to_embeddings(audio: UploadFile = File(...), 
+                             lyrics: str = Form(...), 
+                             name: str = Form(...), 
+                             chorus: str = Form(...)):
+    
     file_path = f"{hashlib.sha256(audio.filename.encode()).hexdigest()}.wav"
     file_path = f"{str(UPLOAD_DIR)}/{file_path}"
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(audio.file, buffer)
 
-    embedding = await extract_song_embedding(file_path, lyrics)
+    embeddings = await extract_song_embeddings(file_path, lyrics, name, chorus)
     os.remove(file_path)
-    return embedding
+    return embeddings
 
 
-@router.post("/post")
-async def get_song_for_post_data(
-    text: Annotated[str, Form()], image: UploadFile = File(...)
-):
-    return await get_song_for_post(UploadPost(text=text, image=image))
+#@router.post("/post")
+# async def get_song_for_post_data(
+#     text: str = Form(...), image: UploadFile = File(...)
+# ):
+
+async def get_song_for_post_data(data: UploadPost):
+    return await get_embeddings_for_post(data)

@@ -3,7 +3,7 @@ import Modal from './Modal';
 import './ResultsModal.css';
 
 function ResultsModal({ isOpen, onClose, songs }) {
-    const sortedSongs = songs.sort((a, b) => b.distance - a.distance);
+    const sortedSongs = songs.sort((a, b) => b.percentage - a.percentage);
     const [playingId, setPlayingId] = React.useState(null);
     const [loadingId, setLoadingId] = React.useState(null);
     const [progress, setProgress] = React.useState(0);
@@ -94,11 +94,11 @@ function ResultsModal({ isOpen, onClose, songs }) {
                             )}
                         </div>
                         <div className="match-info">
-                            <div className="match-percentage">{Math.round(song.distance * 100)}%</div>
+                            <div className="match-percentage">{Math.round(song.percentage)}%</div>
                             <div className="progress-bar">
                                 <div
                                     className="progress-fill"
-                                    style={{ width: `${Math.round(song.distance * 100)}%` }}
+                                    style={{ width: `${Math.round(song.percentage)}%` }}
                                 ></div>
                             </div>
                         </div>

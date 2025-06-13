@@ -17,6 +17,8 @@ from transformers import (
     pipeline,
 )
 
+from functools import reduce
+from googletrans import Translator
 from oria_backend.data_transformers.prompts.image_to_embeddings import (
     generate_image_to_embeddings_prompt,
 )
@@ -44,7 +46,7 @@ from .models import (
     TextResponseModel,
     TextToEmbeddingsModel,
     TextToEmotionsModel,
-    UploadPost,
+    UploadPost
 )
 
 device = torch.device(
@@ -83,7 +85,6 @@ danceable_model = TensorflowPredict2D(
     output="model/Softmax",
 )
 
-
 engagement_model = TensorflowPredict2D(
     graphFilename=f"{ESSENTIA_MODELS_PATH}/engagement_2c-discogs-effnet-1.pb",
     output="model/Softmax",
@@ -92,7 +93,6 @@ engagement_model = TensorflowPredict2D(
 genre_model = TensorflowPredict2D(
     graphFilename=f"{ESSENTIA_MODELS_PATH}/mtg_jamendo_genre-discogs-effnet-1.pb"
 )
-
 
 mood_model = TensorflowPredict2D(
     graphFilename=f"{ESSENTIA_MODELS_PATH}/mtg_jamendo_moodtheme-discogs_label_embeddings-effnet-1.pb"
@@ -196,102 +196,7 @@ async def translate_to_english(text):
     return translation.text
 
 
-async def identify_chorus_from_src(src_lyrics):
-    chorus = ""
-    for i in re.findall(r"(\[.*?\])+", src_lyrics):
-        if chorus:
-            index = chorus.find(i)
-            if not index:
-                continue
-            chorus = chorus[:index]
-            break
-        else:
-            res = await translate_to_english(i)
-            if "chorus" in res.lower():
-                index = src_lyrics.find(i)
-                if not index:
-                    continue
-
-                chorus = src_lyrics[index + len(i) :]
-
-    if chorus:
-        return await translate_to_english(chorus)
-    return chorus
-
-
-async def identify_chorus(lyrics):
-    # split to song sections
-    lines = [line.strip() for line in lyrics.split("\n") if line.strip()]
-    sections = []
-    current_section = []
-
-    for line in lines:
-        if not line:
-            if current_section:
-                sections.append("\n".join(current_section))
-                current_section = []
-        else:
-            current_section.append(line)
-
-    if current_section:
-        sections.append("\n".join(current_section))
-
-    # if couldn't split to to sections
-    if len(sections) <= 1:
-        # look for cluster of repeated lines
-        line_counts = Counter(lines)
-        repeated_lines = [line for line, count in line_counts.items() if count >= 2]
-
-        if repeated_lines:
-            chorus_candidates = []
-            for i in range(len(lines)):
-                if lines[i] in repeated_lines:
-                    candidate = [lines[i]]
-                    for j in range(1, min(4, len(lines) - i)):
-                        if lines[i + j] in repeated_lines:
-                            candidate.append(lines[i + j])
-                        else:
-                            break
-
-                    # add the cluster to candidates if at least 2 lines
-                    if len(candidate) >= 2:
-                        chorus_candidates.append("\n".join(candidate))
-
-            # choose the longest candidate else most repeated line
-            if chorus_candidates:
-                return max(chorus_candidates, key=len)
-            else:
-                return max(line_counts.items(), key=lambda x: x[1])[0]
-    else:
-        # return the section that appear the most
-        section_counts = Counter(sections)
-        most_common_section = section_counts.most_common(1)[0][0]
-        # verify it appeared at least 2 times
-        if section_counts[most_common_section] >= 2:
-            return most_common_section
-
-    # fall return section containing the title
-    title_words = set(re.findall(r"\b\w+\b", lines[0].lower()))
-
-    for section in sections:
-        section_lower = section.lower()
-        title_word_count = sum(1 for word in title_words if word in section_lower)
-
-        if title_word_count >= len(title_words) * 0.5:
-            return section
-
-    # if still unsuccessful, return the most common line
-    line_counts = Counter(lines)
-    return max(line_counts.items(), key=lambda x: x[1])[0]
-
-
-async def get_lyrics_description(lyrics):
-    chorus = await identify_chorus_from_src(lyrics)
-    if not chorus:
-        en_lyrics = await translate_to_english(lyrics)
-        chorus = await identify_chorus(en_lyrics)
-
-    # extract emotions
+async def get_lyrics_description(chorus):
     input_model = TextToEmotionsModel(text=chorus)
     emotions_result = await get_text_emotion(input_model)
     sorted_emotions = sorted(
@@ -301,11 +206,11 @@ async def get_lyrics_description(lyrics):
         emotion["label"] for emotion in sorted_emotions if emotion["score"] > 0.65
     ]
     if lyrics_emotions:
-        return chorus, f"{', '.join(lyrics_emotions)}"
-    return chorus, None
+        return f"{', '.join(lyrics_emotions)}"
+    return None
 
 
-async def extract_song_description(audio_path, lyrics):
+async def extract_song_description(audio_path, chorus):
     genre, mood, engagment, danceable = await get_audio_description(audio_path)
     if not mood:
         mood = []
@@ -314,42 +219,88 @@ async def extract_song_description(audio_path, lyrics):
     if engagment:
         mood = f"{mood}, engageable"
 
-    chorus, lyrics_emotions = await get_lyrics_description(lyrics)
+    lyrics_emotions = await get_lyrics_description(chorus)
     if lyrics_emotions:
         mood = f"{mood}, {lyrics_emotions}"
 
-    return generate_song_to_embeddings_prompt(
-        genre=genre,
-        mood=mood if isinstance(mood, str) else ", ".join(mood),
-        description=chorus,
-    )
+    return genre, mood
 
 
-async def extract_song_embedding(audio_path, lyrics):
-    desc = await extract_song_description(audio_path, lyrics)
-    input_model = TextToEmbeddingsModel(text=desc)
-    embeddings_result = await get_embeddings(input_model)
-    return embeddings_result.embeddings
+async def extract_song_embeddings(audio_path, lyrics, name, chorus):
+    genre, mood = await extract_song_description(audio_path, chorus)
 
+    input_model = TextToEmbeddingsModel(text=mood)
+    mood_embedding = await get_embeddings(input_model)
 
-async def get_description_for_post(data: UploadPost):
+    input_model = TextToEmbeddingsModel(text=lyrics)
+    lyrics_embedding = await get_embeddings(input_model)
+
+    input_model = TextToEmbeddingsModel(text=name)
+    name_embedding = await get_embeddings(input_model)
+
+    if chorus != lyrics:
+        input_model = TextToEmbeddingsModel(text=chorus)
+        chorus_embedding = await get_embeddings(input_model)
+    else:
+        chorus_embedding = lyrics_embedding
+
+    return genre, mood_embedding.embeddings, lyrics_embedding.embeddings, chorus_embedding.embeddings, name_embedding.embeddings
+    
+
+async def get_embeddings_for_post(data: UploadPost):
+    """
+        get post data
+    
+        return:
+        post_emmbedings -> emmbeding of the post text and photo combined
+        emotions_embedding -> emmbeding of the post emotions
+    """
     model = ImageToTextModel(file=data.image)
     response = await get_image_text(model)
     image_as_text = response.text
+    
+    data_text = None
+    emotions_result = None
+    
+    if data.text:
+        try:
+            data_text = await translate_to_english(data.text)
+        except Exception as e:
+            data_text = data.text
+            print(f"Translation failed: {e}")
+    
+    input_model = TextToEmbeddingsModel(text=f'{image_as_text}')
+    image_embedding = await get_embeddings(input_model)
+    emotions_result = None
 
-    input_model = TextToEmotionsModel(text=data.text)
-    emotions_result = await get_text_emotion(input_model)
+    if data_text is not None:
+        input_model = TextToEmbeddingsModel(text=data_text)
+        description_embedding = await get_embeddings(input_model)
+        post_emmbedings = [(a * 2 + b) / 3 for a, b in zip(description_embedding.embeddings, image_embedding.embeddings)]
+        input_model = TextToEmotionsModel(text=data_text)
+        emotions_result = await get_text_emotion(input_model)
+    else:
+        post_emmbedings = image_embedding.embeddings
+    
+    if not emotions_result:
+        input_model = TextToEmotionsModel(text=image_as_text)
+        emotions_result = await get_text_emotion(input_model)
+
+
     sorted_emotions = sorted(
         emotions_result.emotions, key=lambda x: x["score"], reverse=True
     )
-    emotions = [
+
+    final_emotions = [
         emotion["label"] for emotion in sorted_emotions if emotion["score"] > 0.65
     ]
+    if len(final_emotions) < 3:
+        final_emotions = [
+            emotion["label"] for emotion in sorted_emotions[0:3]
+        ]
 
-    return generate_image_to_embeddings_prompt(image_as_text, emotions, data.text)
+    emotions = reduce(lambda x, y: x + ', ' + y, final_emotions)
 
-
-async def get_song_for_post(data: UploadPost):
-    desc = await get_description_for_post(data)
-    embeddings_result = await get_embeddings(TextToEmbeddingsModel(text=desc))
-    return embeddings_result
+    input_model = TextToEmbeddingsModel(text=emotions)
+    emotions_embedding = await get_embeddings(input_model)
+    return post_emmbedings, emotions_embedding.embeddings, 
