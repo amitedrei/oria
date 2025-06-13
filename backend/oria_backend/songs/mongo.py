@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from motor.motor_asyncio import AsyncIOMotorClient
 from oria_backend.config import settings
-
+from sklearn.neighbors import NearestNeighbors
 
 class MongoDB:
     def __init__(self):
@@ -14,43 +14,64 @@ class MongoDB:
             ssl=True,
         )
         self.db = self.client[settings.mongo_db_name]
-        self.songs_collection = self.db.songs_v2
+        self.songs_collection = self.db.songs_v5
+        self.__mood_embeddings = []
+        self.__chorus_embeddings = []
+        self.__name_embeddings = []
+        self.__labels = []
+        self.__max_object_id = 0
+        self.__count = 0
+        self.__changed = True
+
+    async def __get_cache_signature(self):
+        pipeline = [
+            {"$group": {
+                "_id": None,
+                "count": {"$sum": 1},
+                "max_id": {"$max": "$_id"}
+            }}
+        ]
+
+        result = await self.songs_collection.aggregate(pipeline).to_list(length=None)
+        if result:
+            return result[0]["count"], result[0]["max_id"]
+        return 0, None
 
     async def get_all_songs(self) -> List[Dict[str, Any]]:
-        cursor = self.songs_collection.find()
-        return await cursor.to_list(length=None)
+        count, max_object_id = await self.__get_cache_signature()
+        if count == self.__count and max_object_id == self.__max_object_id and len(self.__mood_embeddings):
+            return self.__mood_embeddings, self.__chorus_embeddings, self.__name_embeddings, self.__labels
 
-    async def find_similar_songs(
-        self, 
-        description_embedding: List[float], 
-        emotions_embedding: Optional[List[float]] = None,
-        n: Optional[int] = 5,
-    ) -> List[Dict[str, Any]]:
-        
-        if not emotions_embedding:
-            emotions_embedding = description_embedding
+        self.__changed = True
+        self.__count = count
+        self.__max_object_id = max_object_id
 
-        all_songs = await self.get_all_songs()
+        songs_cursor = self.songs_collection.find({})
 
-        emotions_embedding_np = np.array(emotions_embedding)
-        description_embedding_np = np.array(description_embedding)
+        mood_embeddings = []
+        chorus_embeddings = []
+        name_embeddings = []
+        labels = []
 
-        for song in all_songs:
-            song['emotion_distance'] = np.linalg.norm(
-            emotions_embedding_np - np.array(song["mood_embedding"])
-        )
+        # Use async for instead of regular for
+        async for song in songs_cursor:
+            mood_embeddings.append(song["mood_embedding"])
+            chorus_embeddings.append(song["chorus_embedding"])
+            name_embeddings.append(song["name_embedding"])
+            labels.append((song.get("id", ""), song.get("name", ""), song.get("artists", ""), song.get("source", ""), song.get("url", "")))
 
-        sorted_songs = sorted(all_songs, key=lambda x: x['emotion_distance'])[:min(n*20, len(all_songs))]
-        
-        for song in sorted_songs:
-            song['chorus_distance'] = np.linalg.norm(
-                description_embedding_np - np.array(song['chorus_embedding'])
-            )      
+        self.__mood_embeddings = np.array(mood_embeddings, dtype=np.float32)
+        self.__chorus_embeddings = np.array(chorus_embeddings, dtype=np.float32)
+        self.__name_embeddings = np.array(name_embeddings, dtype=np.float32)
+        self.__labels = labels
 
-        return sorted(sorted_songs, key=lambda x: x["chorus_distance"])[:min(n, len(sorted_songs))]
+        return self.__mood_embeddings, self.__chorus_embeddings, self.__name_embeddings, self.__labels
 
     async def close(self):
         await self.client.close()
+
+    def is_changed(self):
+        return self.__changed
 
 
 mongodb = MongoDB()
