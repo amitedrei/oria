@@ -1,5 +1,6 @@
 import React from 'react';
 import { Instagram } from 'lucide-react';
+import FlowDiagram from '../components/FlowDiagram';
 
 function AboutPage({ onNavigate }) {
   return (
@@ -8,20 +9,14 @@ function AboutPage({ onNavigate }) {
       <section className="section">
         <div className="divider">
             <p>
-            Our mission is to provide innovative solutions that empower businesses
-            and individuals alike. We believe in the power of technology to transform
-            lives, and we strive to make that vision a reality every day.
+            Every image tells a story and every story deserves the perfect soundtrack to bring it to life. No matter the platform, Instagram or TikTok - the right music can elevate your content and engage your audience like never before. We want to make it effortless to find the perfect song that resonates with your message and enhances your storytelling.
             </p>
         </div>
       </section>
       
       <section className="section">
         <h2 className="section-title">How does it work</h2>
-        <div className="divider">
-            <p>
-            Our system detects songs by analyzing images for visual cues like album covers or artists and interpreting any provided text such as lyrics or captions. It then uses AI to match this combined information with a music database to identify the most likely song and display its title, artist, and details.
-            </p>
-        </div>
+          <FlowDiagram/>
       </section>
       
       <section className="section">
@@ -36,12 +31,6 @@ function AboutPage({ onNavigate }) {
         </div>
       </section>
       
-      <div className="support-section">
-        <div className="support-button">
-          <span>SUPPORT US</span>
-          <Instagram size={20} />
-        </div>
-      </div>
     </div>
   );
 }

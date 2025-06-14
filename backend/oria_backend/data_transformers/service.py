@@ -19,12 +19,6 @@ from transformers import (
 
 from functools import reduce
 from googletrans import Translator
-from oria_backend.data_transformers.prompts.image_to_embeddings import (
-    generate_image_to_embeddings_prompt,
-)
-from oria_backend.data_transformers.prompts.song_to_embeddings import (
-    generate_song_to_embeddings_prompt,
-)
 
 from .consts import (
     DANCEABLE_LABLES,
