@@ -24,6 +24,21 @@ KNN_MODEL = None
 KNN_DATA = None
 DATA_DICT = None
 
+async def get_all_songs(count):
+    labels = await mongodb.list_all_songs(count)
+    songs = []
+    for label in labels:
+        songs.append(SongResponseModel(id=str(label['_id']),
+                            name=label['name'],
+                            artists=label['artists'],
+                            url=label['url'],
+                            source=label['source'],
+                            thumbnail=label['thumbnail'],
+                            percentage=0))
+        
+    return songs
+
+
 async def init_knn():
   global KNN_MOOD_DATA, KNN_CHORUS_DATA, KNN_NAME_DATA, KNN_DATA, KNN_LABLES, KNN_MODEL, DATA_DICT
   KNN_MOOD_DATA, KNN_CHORUS_DATA, KNN_NAME_DATA,  KNN_LABLES = await mongodb.get_all_songs()
@@ -177,12 +192,14 @@ async def get_song_for_post(data: UploadPost):
 
             )
         
-        id, name, artists, source, url = KNN_LABLES[indecies[i]]
-        k_labels.append(SongResponseModel(id=id,
-                          name=name,
-                          artists=artists,
-                          url=url,
-                          source=source,
-                          percentage=percentage))
+        id, name, artists, source, url, thumbnail = KNN_LABLES[indecies[i]]
+
+        k_labels.append(SongResponseModel(id=str(id),
+                        name=name,
+                        artists=artists,
+                        url=url,
+                        source=source,
+                        thumbnail=thumbnail,
+                        percentage=percentage))
 
     return k_labels

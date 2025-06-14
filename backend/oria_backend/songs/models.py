@@ -8,4 +8,5 @@ class SongResponseModel(BaseModel):
     artists: List[str]
     url: str
     source: str
+    thumbnail: str
     percentage: float
