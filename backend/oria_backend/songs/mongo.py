@@ -1,8 +1,7 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import numpy as np
 from motor.motor_asyncio import AsyncIOMotorClient
 from oria_backend.config import settings
-from sklearn.neighbors import NearestNeighbors
 
 class MongoDB:
     def __init__(self):
@@ -58,7 +57,7 @@ class MongoDB:
             mood_embeddings.append(song["mood_embedding"])
             chorus_embeddings.append(song["chorus_embedding"])
             name_embeddings.append(song["name_embedding"])
-            labels.append((song.get("id", ""), song.get("name", ""), song.get("artists", ""), song.get("source", ""), song.get("url", "")))
+            labels.append((str(song.get("_id", "")), song.get("name", ""), song.get("artists", ""), song.get("source", ""), song.get("url", "")))
 
         self.__mood_embeddings = np.array(mood_embeddings, dtype=np.float32)
         self.__chorus_embeddings = np.array(chorus_embeddings, dtype=np.float32)
