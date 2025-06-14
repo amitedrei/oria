@@ -1,198 +1,179 @@
-import React from 'react';
-import Modal from './Modal';
-import './ResultsModal.css';
+import { useEffect, useRef, useState } from "react";
+import Modal from "./Modal";
+import "./ResultsModal.css";
 
-function ResultsModal({ isOpen, onClose, songs }) {
-    const sortedSongs = songs.sort((a, b) => b.percentage - a.percentage);
-    const [playingId, setPlayingId] = React.useState(null);
-    const [loadingId, setLoadingId] = React.useState(null);
-    const [progress, setProgress] = React.useState(0);
-    const audioRef = React.useRef(null);
-    const timerRef = React.useRef(null);
+export default function ResultsModal({ isOpen, onClose, songs }) {
+  const sortedSongs = [...songs].sort((a, b) => b.percentage - a.percentage);
+  const [playingId, setPlayingId] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [playerReady, setPlayerReady] = useState(false);
+  const playerRef = useRef(null);
+  const intervalRef = useRef(null);
 
-    const handlePlay = async (song) => {
-        if (playingId === song.id) {
-            // Stop playback
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current.currentTime = 0;
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const createPlayer = () => {
+      playerRef.current = new window.YT.Player("yt-player", {
+        height: "0",
+        width: "0",
+        videoId: "",
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: () => setPlayerReady(true),
+          onStateChange: (e) => {
+            if (e.data === window.YT.PlayerState.ENDED) {
+              clearInterval(intervalRef.current);
+              setPlayingId(null);
+              setProgress(0);
             }
-            setPlayingId(null);
-            setProgress(0);
-            clearInterval(timerRef.current);
-            return;
-        }
-        setLoadingId(song.id);
-        setProgress(0);
-
-        // Create new audio element
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current = null;
-        }
-        const audio = new window.Audio(song.url);
-        audioRef.current = audio;
-
-        audio.addEventListener('canplaythrough', () => {
-            setLoadingId(null);
-            setPlayingId(song.id);
-            audio.play();
-            setProgress(0);
-            let elapsed = 0;
-            timerRef.current = setInterval(() => {
-                elapsed += 0.1;
-                setProgress((elapsed / 10) * 100);
-                if (elapsed >= 10) {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    setPlayingId(null);
-                    setProgress(0);
-                    clearInterval(timerRef.current);
-                }
-            }, 100);
-        }, { once: true });
-
-        audio.addEventListener('error', () => {
-            setLoadingId(null);
-            setPlayingId(null);
-            setProgress(0);
-            clearInterval(timerRef.current);
-        });
-        audio.load();
+          },
+        },
+      });
     };
 
-    React.useEffect(() => {
-        return () => {
-            if (audioRef.current) {
-                audioRef.current.pause();
+    // Load the IFrame API script if needed
+    if (!document.getElementById("youtube-iframe-api")) {
+      window.onYouTubeIframeAPIReady = createPlayer;
+      const tag = document.createElement("script");
+      tag.id = "youtube-iframe-api";
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.body.appendChild(tag);
+    } else if (window.YT && window.YT.Player) {
+      createPlayer();
+    }
+
+    return () => {
+      clearInterval(intervalRef.current);
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+      setPlayerReady(false);
+      setPlayingId(null);
+      setProgress(0);
+    };
+  }, [isOpen]);
+
+  const handlePlay = (song) => {
+    if (!playerReady || !playerRef.current) return;
+    const player = playerRef.current;
+    const state = player.getPlayerState();
+    const videoId = new URL(song.url).searchParams.get("v");
+
+    if (playingId === song.id) {
+      if (state === window.YT.PlayerState.PLAYING) {
+        player.pauseVideo();
+        clearInterval(intervalRef.current);
+        setPlayingId(null);
+        setProgress(0);
+      } else if (state === window.YT.PlayerState.PAUSED) {
+        player.playVideo();
+        intervalRef.current = setInterval(() => {
+          setProgress((prev) => {
+            const next = prev + 1;
+            if (next >= 100) {
+              player.pauseVideo();
+              clearInterval(intervalRef.current);
+              setPlayingId(null);
+              return 0;
             }
-            clearInterval(timerRef.current);
-        };
-    }, []);
+            return next;
+          });
+        }, 100);
+        setPlayingId(song.id);
+      }
+      return;
+    }
 
-    return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            title="Top Matching Songs"
-        >
-            <div className="results-container">
-                {sortedSongs.map(song => (
-                    <div key={song.id} className="song-result-item">
-                        <div className="song-info">
-                            <div className="song-title">{song.name}</div>
-                            <div className="song-artist">{song.artists.join(', ')}</div>
-                            {song.url && (
-                                <a 
-                                    href={song.url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="song-url"
-                                >
-                                    Listen on Youtube
-                                </a>
-                            )}
-                        </div>
-                        <div className="match-info">
-                            <div className="match-percentage">{Math.round(song.percentage)}%</div>
-                            <div className="progress-bar">
-                                <div
-                                    className="progress-fill"
-                                    style={{ width: `${Math.round(song.percentage)}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                        <div className="song-player">
-                            <button
-                                className={`player-btn${playingId === song.id ? ' playing' : ''}`}
-                                onClick={() => handlePlay(song)}
-                                disabled={loadingId === song.id}
-                                style={{
-                                    borderRadius: '50%',
-                                    width: 40,
-                                    height: 40,
-                                    border: 'none',
-                                    background: '#eee',
-                                    position: 'relative',
-                                    marginLeft: 16,
-                                    cursor: loadingId === song.id ? 'wait' : 'pointer'
-                                }}
-                                aria-label={playingId === song.id ? 'Stop preview' : 'Play 10s preview'}
-                            >
-                                {loadingId === song.id ? (
-                                    <span className="circular-loader" style={{
-                                        width: 24,
-                                        height: 24,
-                                        display: 'inline-block',
-                                        border: '3px solid #ccc',
-                                        borderTop: '3px solid #333',
-                                        borderRadius: '50%',
-                                        animation: 'spin 1s linear infinite'
-                                    }} />
-                                ) : (
-                                    <>
-                                        <svg width="20" height="20" viewBox="0 0 20 20">
-                                            {playingId === song.id ? (
-                                                <rect x="5" y="4" width="3" height="12" fill="#333"/>
-                                            ) : (
-                                                <polygon points="6,4 16,10 6,16" fill="#333"/>
-                                            )}
-                                            {playingId === song.id && (
-                                                <rect x="12" y="4" width="3" height="12" fill="#333"/>
-                                            )}
-                                        </svg>
-                                        {playingId === song.id && (
-                                            <svg
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: 0,
-                                                    left: 0,
-                                                    width: 40,
-                                                    height: 40,
-                                                    pointerEvents: 'none'
-                                                }}
-                                                width="40"
-                                                height="40"
-                                            >
-                                                <circle
-                                                    cx="20"
-                                                    cy="20"
-                                                    r="16"
-                                                    stroke="#1976d2"
-                                                    strokeWidth="3"
-                                                    fill="none"
-                                                    strokeDasharray={2 * Math.PI * 16}
-                                                    strokeDashoffset={2 * Math.PI * 16 * (1 - progress / 100)}
-                                                    style={{ transition: 'stroke-dashoffset 0.1s linear' }}
-                                                />
-                                            </svg>
-                                        )}
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            <style>
-                {`
-                @keyframes spin {
-                    0% { transform: rotate(0deg);}
-                    100% { transform: rotate(360deg);}
-                }
-                .song-result-item {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                }
-                .song-player {
-                    display: flex;
-                    align-items: center;
-                }
-                `}
-            </style>
+    player.loadVideoById(videoId);
+    player.playVideo();
+    setPlayingId(song.id);
+    setProgress(0);
+    clearInterval(intervalRef.current);
+
+    intervalRef.current = setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + 1;
+        if (next >= 100) {
+          player.pauseVideo();
+          clearInterval(intervalRef.current);
+          setPlayingId(null);
+          return 0;
+        }
+        return next;
+      });
+    }, 100);
+  };
+
+  return (
+    <>
+      <div
+        id="yt-player"
+        style={{
+          position: "absolute",
+          visibility: "hidden",
+          width: 0,
+          height: 0,
+        }}
+      />
+
+      {isOpen && (
+        <Modal isOpen={isOpen} onClose={onClose} title="Top Matching Songs">
+          <div className="results-container">
+            {sortedSongs.map((song) => (
+              <div key={song.id} className="song-result-item">
+                <div className="song-info">
+                  <div className="song-title">{song.name}</div>
+                  <div className="song-artist">{song.artists.join(", ")}</div>
+                </div>
+                <div className="song-player" style={{ position: "relative" }}>
+                  <button
+                    onClick={() => handlePlay(song)}
+                    disabled={!playerReady}
+                    className={`player-btn ${
+                      playingId === song.id ? "playing" : ""
+                    }`}
+                    aria-label={
+                      playingId === song.id &&
+                      playerRef.current.getPlayerState() ===
+                        window.YT.PlayerState.PLAYING
+                        ? "Pause preview"
+                        : "Play 10s preview"
+                    }
+                    style={{
+                      borderRadius: "50%",
+                      width: 40,
+                      height: 40,
+                      border: "none",
+                      background: "#eee",
+                      cursor: playerReady ? "pointer" : "wait",
+                      fontSize: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {!playerReady
+                      ? "⏳"
+                      : playingId === song.id &&
+                        playerRef.current.getPlayerState() ===
+                          window.YT.PlayerState.PLAYING
+                      ? "⏸"
+                      : "▶"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </Modal>
-    );
+      )}
+    </>
+  );
 }
-
-export default ResultsModal;
