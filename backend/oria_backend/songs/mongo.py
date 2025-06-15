@@ -2,6 +2,8 @@ from typing import Any, Dict, List
 import numpy as np
 from motor.motor_asyncio import AsyncIOMotorClient
 from oria_backend.config import settings
+from sklearn.neighbors import NearestNeighbors
+from random import shuffle
 
 class MongoDB:
     def __init__(self):
@@ -36,6 +38,26 @@ class MongoDB:
             return result[0]["count"], result[0]["max_id"]
         return 0, None
 
+    async def list_all_songs(self, count: int = None) -> List[Dict[str, Any]]:
+        projection = {
+            "name": 1,
+            "artists": 1, 
+            "url": 1,
+            "source": 1,
+            "thumbnail": 1,
+            "_id": 1
+        }
+
+        if count is not None:
+            cursor = self.songs_collection.aggregate([
+                {"$sample": {"size": count}},
+                {"$project": projection}
+            ])
+            return await cursor.to_list(length=count)
+        else:
+            cursor = self.songs_collection.find({}, projection)
+            return await cursor.to_list(length=None)
+
     async def get_all_songs(self) -> List[Dict[str, Any]]:
         count, max_object_id = await self.__get_cache_signature()
         if count == self.__count and max_object_id == self.__max_object_id and len(self.__mood_embeddings):
@@ -57,7 +79,7 @@ class MongoDB:
             mood_embeddings.append(song["mood_embedding"])
             chorus_embeddings.append(song["chorus_embedding"])
             name_embeddings.append(song["name_embedding"])
-            labels.append((str(song.get("_id", "")), song.get("name", ""), song.get("artists", ""), song.get("source", ""), song.get("url", "")))
+            labels.append((song.get("_id", ""), song.get("name", ""), song.get("artists", ""), song.get("source", ""), song.get("url", ""), song.get("thumbnail", "")))
 
         self.__mood_embeddings = np.array(mood_embeddings, dtype=np.float32)
         self.__chorus_embeddings = np.array(chorus_embeddings, dtype=np.float32)
