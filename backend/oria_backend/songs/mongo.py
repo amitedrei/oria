@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import numpy as np
 from motor.motor_asyncio import AsyncIOMotorClient
 from oria_backend.config import settings

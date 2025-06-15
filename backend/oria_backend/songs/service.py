@@ -1,19 +1,19 @@
-from typing import List
+
 
 from oria_backend.data_transformers.models import UploadPost
 from oria_backend.data_transformers.route import get_song_for_post_data
 from oria_backend.songs.models import SongResponseModel
 from oria_backend.songs.mongo import mongodb
 from sklearn.neighbors import NearestNeighbors
-from bson import ObjectId
 from enum import Enum
 import numpy as np
 
+
 class data_options(Enum):
-  CHORUS_DATA = 1
-  MOOD_DATA = 2
-  CHOURS_NAME_DATA = 3 # name + chours
-  NAME_DATA = 4
+    CHORUS_DATA = 1
+    MOOD_DATA = 2
+    CHOURS_NAME_DATA = 3  # name + chours
+    NAME_DATA = 4
 
 
 KNN_CHORUS_DATA = None
@@ -23,6 +23,7 @@ KNN_LABLES = None
 KNN_MODEL = None
 KNN_DATA = None
 DATA_DICT = None
+
 
 async def get_all_songs(count):
     labels = await mongodb.list_all_songs(count)
@@ -38,36 +39,48 @@ async def get_all_songs(count):
         
     return songs
 
-
 async def init_knn():
-  global KNN_MOOD_DATA, KNN_CHORUS_DATA, KNN_NAME_DATA, KNN_DATA, KNN_LABLES, KNN_MODEL, DATA_DICT
-  KNN_MOOD_DATA, KNN_CHORUS_DATA, KNN_NAME_DATA,  KNN_LABLES = await mongodb.get_all_songs()
+    global \
+        KNN_MOOD_DATA, \
+        KNN_CHORUS_DATA, \
+        KNN_NAME_DATA, \
+        KNN_DATA, \
+        KNN_LABLES, \
+        KNN_MODEL, \
+        DATA_DICT
+    (
+        KNN_MOOD_DATA,
+        KNN_CHORUS_DATA,
+        KNN_NAME_DATA,
+        KNN_LABLES,
+    ) = await mongodb.get_all_songs()
 
-  if not mongodb.is_changed():
-      return
+    if not mongodb.is_changed():
+        return
 
-  KNN_CHOURS_NAME_DATA = np.concatenate((KNN_CHORUS_DATA, KNN_NAME_DATA), axis=1)
- 
-  DATA_DICT = {
-    data_options.CHORUS_DATA : KNN_CHORUS_DATA,
-    data_options.MOOD_DATA : KNN_MOOD_DATA,
-    data_options.CHOURS_NAME_DATA : KNN_CHOURS_NAME_DATA,
-    data_options.NAME_DATA : KNN_NAME_DATA
-  }
+    KNN_CHOURS_NAME_DATA = np.concatenate((KNN_CHORUS_DATA, KNN_NAME_DATA), axis=1)
 
-  KNN_MODEL = NearestNeighbors(n_neighbors=20, metric='euclidean')
-  KNN_MODEL.fit(KNN_NAME_DATA)
+    DATA_DICT = {
+        data_options.CHORUS_DATA: KNN_CHORUS_DATA,
+        data_options.MOOD_DATA: KNN_MOOD_DATA,
+        data_options.CHOURS_NAME_DATA: KNN_CHOURS_NAME_DATA,
+        data_options.NAME_DATA: KNN_NAME_DATA,
+    }
+
+    KNN_MODEL = NearestNeighbors(n_neighbors=20, metric="euclidean")
+    KNN_MODEL.fit(KNN_NAME_DATA)
+
 
 def cosine_similarity_for_precentage(vec1, vec2):
     """
-      get precentage of vector similiarity
+    get precentage of vector similiarity
     """
     norm1 = np.linalg.norm(vec1)
     norm2 = np.linalg.norm(vec2)
-   
+
     if norm1 == 0 or norm2 == 0:
         raise ValueError("One or both vectors have zero magnitude.")
-   
+
     vec1_normalized = vec1 / norm1
     vec2_normalized = vec2 / norm2
 
@@ -75,6 +88,7 @@ def cosine_similarity_for_precentage(vec1, vec2):
 
     similarity_percentage = ((cosine_sim + 1) / 2) * 100
     return similarity_percentage
+
 
 def top_k_cosine_similar(query_vector: np.ndarray, matrix: np.ndarray, top_k: int = 5):
     """
@@ -102,7 +116,10 @@ def top_k_cosine_similar(query_vector: np.ndarray, matrix: np.ndarray, top_k: in
 
     return top_indices, top_similarities
 
-def top_k_euclidean_distance(query_vector: np.ndarray, matrix: np.ndarray, top_k: int = 5):
+
+def top_k_euclidean_distance(
+    query_vector: np.ndarray, matrix: np.ndarray, top_k: int = 5
+):
     """
     Finds the top_k most similar vectors to query_vector in the matrix using Euclidean distance.
 
@@ -125,7 +142,10 @@ def top_k_euclidean_distance(query_vector: np.ndarray, matrix: np.ndarray, top_k
 
     return top_indices, top_distances
 
-async def repetitive_cosine_similarity(input_list, data_list, prediction_amount_list, indices, top_k_function):
+
+async def repetitive_cosine_similarity(
+    input_list, data_list, prediction_amount_list, indices, top_k_function
+):
     """
     input_list -> list of input vectors for the knn procedure
     data_list -> list of data to search in(it contains keys for KNN_DICT)
@@ -138,60 +158,60 @@ async def repetitive_cosine_similarity(input_list, data_list, prediction_amount_
         input = input_list[i]
         data = DATA_DICT[data_list[i]]
         predict_amount = prediction_amount_list[i]
-        indices, similarities = top_k_function[i](input, data[current_indices], predict_amount)
+        indices, similarities = top_k_function[i](
+            input, data[current_indices], predict_amount
+        )
         current_indices = current_indices[indices]
     return current_indices, similarities
+
 
 async def get_song_for_post(data: UploadPost):
     await init_knn()
     global KNN_MODEL, KNN_LABLES, KNN_DATA, KNN_MOOD_DATA, KNN_CHORUS_DATA
-    
+
     res = await get_song_for_post_data(data)
     description_embedding, emotions_embedding = res
-    double_description_embedding = np.concatenate((description_embedding, description_embedding))
+    double_description_embedding = np.concatenate(
+        (description_embedding, description_embedding)
+    )
     distances, indices = KNN_MODEL.kneighbors([description_embedding])
     k_labels = [KNN_LABLES[i] for i in indices[0]]
 
     indecies, similarities = await repetitive_cosine_similarity(
-    input_list = [
-        description_embedding,
-        emotions_embedding,
-        double_description_embedding
-    ],
-    data_list = [
-        data_options.CHORUS_DATA,
-        data_options.MOOD_DATA,
-        data_options.CHOURS_NAME_DATA
+        input_list=[
+            description_embedding,
+            emotions_embedding,
+            double_description_embedding,
         ],
-    prediction_amount_list = [
-        15,
-        10,
-        5
-    ],
-    top_k_function = [
-        top_k_cosine_similar,
-        top_k_cosine_similar,
-        top_k_euclidean_distance
-    ],
-    indices = indices[0]
+        data_list=[
+            data_options.CHORUS_DATA,
+            data_options.MOOD_DATA,
+            data_options.CHOURS_NAME_DATA,
+        ],
+        prediction_amount_list=[15, 10, 5],
+        top_k_function=[
+            top_k_cosine_similar,
+            top_k_cosine_similar,
+            top_k_euclidean_distance,
+        ],
+        indices=indices[0],
     )
 
     k_labels = []
     for i in range(5):
         percentage = cosine_similarity_for_precentage(
-                np.concatenate((
+            np.concatenate(
+                (
                     KNN_CHORUS_DATA[indecies[i]],
                     KNN_NAME_DATA[indecies[i]],
-                    KNN_MOOD_DATA[indecies[i]]
-                )),
-                np.concatenate((
-                    description_embedding,
-                    description_embedding,
-                    emotions_embedding
-                    ))
+                    KNN_MOOD_DATA[indecies[i]],
+                )
+            ),
+            np.concatenate(
+                (description_embedding, description_embedding, emotions_embedding)
+            ),
+        )
 
-            )
-        
         id, name, artists, source, url, thumbnail = KNN_LABLES[indecies[i]]
 
         k_labels.append(SongResponseModel(id=str(id),
