@@ -1,10 +1,12 @@
 from typing import Any, List
 from loguru import logger
 from fastapi import UploadFile
+import numpy as np
 from oria_backend.data_transformers.service import (
     extract_description_from_image,
     get_embeddings,
     get_image_from_upload_file,
+    get_refined_embeddings,
 )
 from oria_backend.songs.models import SongResponseModel
 from oria_backend.songs.mongo import mongodb
@@ -59,8 +61,6 @@ def get_top_songs_by_field(
     description: str,
     query_fields: list[str] = [
         NAME_EMBEDDING_FIELD,
-        CHORUS_EMBEDDING_FIELD,
-        LYRICS_EMBEDDING_FIELD,
     ],
 ) -> tuple[list[str], list[dict[str, Any]]]:
     distance_fields: list[str] = []
@@ -86,37 +86,44 @@ def get_top_songs_by_field(
 
 async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseModel]:
     top_songs = await mongodb.get_all_songs()
-
     image_obj = get_image_from_upload_file(image)
     image_description = extract_description_from_image(image_obj)
-    combined_description = f"'{image_description}'. Caption: '{caption}'"
-    combined_embedding = get_embeddings(combined_description)
     image_embedding = get_embeddings(image_description)
+
+    image_embedding = np.array(image_embedding)
+    image_embedding = image_embedding / np.linalg.norm(image_embedding)
+
+    if len(caption) > 0:
+        caption_embedding = get_embeddings(caption)
+
+        caption_embedding = np.array(caption_embedding)
+        caption_embedding = caption_embedding / np.linalg.norm(caption_embedding)
+
+        caption_weight = 0.3
+        combined_embeddings = caption_embedding * caption_weight + image_embedding * (
+            1 - caption_weight
+        )
+        combined_embeddings = combined_embeddings / np.linalg.norm(combined_embeddings)
+        combined_embeddings = combined_embeddings.tolist()
+    else:
+        combined_embeddings = image_embedding.tolist()
+
+    refined_embeddings = get_refined_embeddings(combined_embeddings)
 
     logger.info(f'Image description: "{image_description}"')
     logger.info(f'Caption: "{caption}"')
 
     combined_distance_fields, top_songs = get_top_songs_by_field(
         top_songs,
-        combined_embedding,
+        refined_embeddings,
         "combined",
-        combined_description,
+        "combined_description",
         query_fields=[
             NAME_EMBEDDING_FIELD,
         ],
     )
 
-    image_chorus_distance_fields, top_songs = get_top_songs_by_field(
-        top_songs,
-        image_embedding,
-        "image",
-        image_description,
-        query_fields=[
-            CHORUS_EMBEDDING_FIELD,
-        ],
-    )
-
-    distance_fields = combined_distance_fields + image_chorus_distance_fields
+    distance_fields = combined_distance_fields
 
     return sorted(
         [

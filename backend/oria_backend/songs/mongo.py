@@ -15,7 +15,7 @@ class MongoDB:
             ssl=True,
         )
         self.db = self.client[settings.mongo_db_name]
-        self.songs_collection = self.db.songs_v4
+        self.songs_collection = self.db.songs_v5
 
     def __del__(self):
         self.close()
