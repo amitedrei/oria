@@ -21,8 +21,10 @@ class MongoDB:
         self.close()
 
     @timed_cache(ttl_seconds=300)
-    async def get_all_songs(self) -> List[Dict[str, Any]]:
+    async def get_all_songs(self, count: int | None = None) -> List[Dict[str, Any]]:
         cursor = self.songs_collection.find()
+        if count is not None:
+            cursor = cursor.limit(count)
         return await cursor.to_list(length=None)
 
     def close(self):

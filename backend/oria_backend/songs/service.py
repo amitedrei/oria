@@ -19,21 +19,26 @@ TOP_SONGS_AMOUNT = 5
 MAX_SONGS_CUT = 5
 
 
-async def get_all_songs() -> List[SongResponseModel]:
-    songs = await mongodb.get_all_songs()
-    return [
-        SongResponseModel(
-            id=song["_id"],
-            name=song["name"],
-            artists=song["artists"],
-            url=song["url"],
-            thumbnail=song["thumbnail"],
-            source=song["source"],
-            playlists=song["playlists"],
-            distances={},
+async def get_all_songs(count):
+    labels = await mongodb.get_all_songs(count)
+    songs = []
+    for label in labels:
+        songs.append(
+            SongResponseModel(
+                id=str(label["_id"]),
+                name=label["name"],
+                artists=label["artists"],
+                url=label["url"],
+                source=label["source"],
+                thumbnail=label["thumbnail"],
+                percentage=0,
+                distance=-1,
+                playlists=label.get("playlists", []),
+                distances={},
+            )
         )
-        for song in songs
-    ]
+
+    return songs
 
 
 def build_field_distance_function(field: str, filter_category: str):
@@ -140,6 +145,10 @@ async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseMo
                 / len(distance_fields)
                 if distance_fields
                 else -1,
+                percentage=sum(
+                    song[field] for field in distance_fields if field in song
+                )
+                / len(distance_fields),
             )
             for song in top_songs
         ],

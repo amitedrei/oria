@@ -1,4 +1,6 @@
 from pydantic import BaseModel
+from fastapi import UploadFile
+from typing import Optional
 
 
 class TextToEmbeddingsModel(BaseModel):
@@ -12,3 +14,43 @@ class EmbeddingsResponseModel(BaseModel):
 
 class ImageToTextResponseModel(BaseModel):
     image_description: str
+
+
+class DistanceRequestModel(BaseModel):
+    text1: str
+    text2: str
+
+
+class DistanceResponseModel(BaseModel):
+    similarity: float
+
+
+class TextToEmotionsModel(BaseModel):
+    text: str
+
+
+class EmotionsResponseModel(BaseModel):
+    text: str
+    emotions: list[dict]
+
+
+class ImageToTextModel(BaseModel):
+    file: UploadFile
+
+
+class TextResponseModel(BaseModel):
+    text: str
+
+
+class UploadSong(BaseModel):
+    audio: UploadFile
+    lyrics: str
+
+
+class UploadPost(BaseModel):
+    text: Optional[str] = ""
+    image: UploadFile
+
+
+class UploadPostResponse(BaseModel):
+    url: str

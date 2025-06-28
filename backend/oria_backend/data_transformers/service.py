@@ -72,6 +72,7 @@ image_model = BlipForConditionalGeneration.from_pretrained(
 embeddings_model.to(device)
 image_model.to(device)
 
+
 def get_embeddings(text: str) -> list[float]:
     embeddings = embeddings_model.encode([text])
     return embeddings.tolist()[0]

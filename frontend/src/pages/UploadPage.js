@@ -1,15 +1,18 @@
 import { ArrowRight, Loader, X } from "lucide-react";
 import { useRef, useState } from "react";
 import ResultsModal from "../components/ResultsModal";
+import MusicAnalysisLoader from "../components/MusicAnalysisLoader";
 
 function UploadPage({ onNavigate }) {
   const [dragActive, setDragActive] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [additionalText, setAdditionalText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [showMusicLoader, setShowMusicLoader] = useState(false);
+  const [apiResponse, setApiResponse] = useState(null);
+  const [forceComplete, setForceComplete] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleDrag = (e) => {
@@ -54,10 +57,8 @@ function UploadPage({ onNavigate }) {
   };
 
   const removeImage = (e) => {
-    // Prevent triggering the upload dialog
     e.stopPropagation();
     setImageFile(null);
-    // Reset the file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -65,7 +66,6 @@ function UploadPage({ onNavigate }) {
 
   const showAlert = (message) => {
     setAlertMessage(message);
-    // Auto-dismiss after 3 seconds
     setTimeout(() => {
       setAlertMessage(null);
     }, 3000);
@@ -81,14 +81,14 @@ function UploadPage({ onNavigate }) {
       return;
     }
 
-    setIsLoading(true);
+    setApiResponse(null);
+    setForceComplete(false);
+    setShowMusicLoader(true);
 
     try {
       const formData = new FormData();
       formData.append("image", imageFile);
       formData.append("text", additionalText);
-
-      console.log("Submitting form data:", formData);
 
       const response = await fetch("/songs/find-songs", {
         method: "POST",
@@ -101,12 +101,15 @@ function UploadPage({ onNavigate }) {
 
       const data = await response.json();
       setSearchResults(data);
-      setShowResultsModal(true);
+      setApiResponse(data);
+      
     } catch (error) {
-      showAlert("Failed to process your request. Please try again.");
+      setForceComplete(true);
+      setTimeout(() => {
+        setShowMusicLoader(false);
+        showAlert("Failed to process your request. Please try again.");
+      }, 500);
       console.error("Error:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -136,7 +139,7 @@ function UploadPage({ onNavigate }) {
                 className="remove-button"
                 onClick={removeImage}
                 aria-label="Remove image"
-                disabled={isLoading}
+                disabled={showMusicLoader}
               >
                 <X size={18} />
               </button>
@@ -152,7 +155,7 @@ function UploadPage({ onNavigate }) {
           className="input-file"
           accept="image/*"
           onChange={handleChange}
-          disabled={isLoading}
+          disabled={showMusicLoader}
           style={{ display: "none" }}
         />
       </div>
@@ -162,15 +165,15 @@ function UploadPage({ onNavigate }) {
         className="input-field"
         placeholder="Type your additional text"
         value={additionalText}
-        disabled={isLoading}
+        disabled={showMusicLoader}
         onChange={(e) => setAdditionalText(e.target.value)}
       />
 
-      <button className="button" onClick={handleSubmit} disabled={isLoading}>
+      <button className="button" onClick={handleSubmit} disabled={showMusicLoader}>
         <span className="button-text">
-          {isLoading ? "processing..." : "continue"}
+          {showMusicLoader ? "processing..." : "continue"}
         </span>
-        {isLoading ? (
+        {showMusicLoader ? (
           <Loader size={16} className="spinner" />
         ) : (
           <ArrowRight size={16} />
@@ -186,6 +189,20 @@ function UploadPage({ onNavigate }) {
             </button>
           </div>
         </div>
+      )}
+
+      {showMusicLoader && (
+        <MusicAnalysisLoader 
+          songs={[]}
+          apiResponse={apiResponse}
+          forceComplete={forceComplete}
+          onComplete={(responseData) => {
+            setShowMusicLoader(false);
+            if (responseData && !forceComplete) {
+              setShowResultsModal(true);
+            }
+          }}
+        />
       )}
 
       <ResultsModal
