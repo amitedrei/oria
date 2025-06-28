@@ -1,91 +1,29 @@
-import asyncio
-import hashlib
-import os
-from pathlib import Path
-import shutil
-from typing import Annotated
-
-from fastapi import APIRouter, File, Form, UploadFile
-from fastapi import HTTPException
+from fastapi import APIRouter, File, UploadFile
 
 from .models import (
-    DistanceRequestModel,
-    DistanceResponseModel,
     EmbeddingsResponseModel,
-    EmotionsResponseModel,
-    ImageToTextModel,
-    TextResponseModel,
+    ImageToTextResponseModel,
     TextToEmbeddingsModel,
-    TextToEmotionsModel,
-    UploadPost,
 )
 from .service import (
-    calculate_distance,
-    extract_song_embeddings,
+    extract_description_from_image,
     get_embeddings,
-    get_image_text,
-    get_embeddings_for_post,
-    get_text_emotion,
+    get_image_from_upload_file,
 )
-
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
 
 router = APIRouter(prefix="/data-transformers", tags=["Data Transformers"])
 
 
-@router.post("/embeddings")
+@router.post("/text-to-embeddings")
 async def text_to_embeddings(data: TextToEmbeddingsModel) -> EmbeddingsResponseModel:
-    return await get_embeddings(data)
+    embeddings = get_embeddings(data.text)
+
+    return EmbeddingsResponseModel(text=data.text, embeddings=embeddings)
 
 
-@router.post("/calculate-distance")
-async def get_distance(data: DistanceRequestModel) -> DistanceResponseModel:
-    results = await asyncio.gather(
-        get_embeddings(TextToEmbeddingsModel(text=data.text1)),
-        get_embeddings(TextToEmbeddingsModel(text=data.text2)),
+@router.post("/image-to-text")
+async def image_to_text(image: UploadFile = File(...)) -> ImageToTextResponseModel:
+    image_description = extract_description_from_image(
+        get_image_from_upload_file(image)
     )
-    return calculate_distance(
-        embedding1=results[0].embeddings, embedding2=results[1].embeddings
-    )
-
-
-@router.post("/text")
-async def text_to_emotions(data: TextToEmotionsModel) -> EmotionsResponseModel:
-    return await get_text_emotion(data)
-
-
-@router.post("/image")
-async def upload_image(file: UploadFile = File(...)) -> TextResponseModel:
-    if not (file.content_type or "").startswith("image/"):
-        raise HTTPException(
-            status_code=400,
-            detail="File must be an image",
-        )
-    return await get_image_text(ImageToTextModel(file=file))
-
-
-@router.post("/song")
-async def song_to_embeddings(audio: UploadFile = File(...), 
-                             lyrics: str = Form(...), 
-                             name: str = Form(...), 
-                             chorus: str = Form(...)):
-    
-    file_path = f"{hashlib.sha256(audio.filename.encode()).hexdigest()}.wav"
-    file_path = f"{str(UPLOAD_DIR)}/{file_path}"
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(audio.file, buffer)
-
-    embeddings = await extract_song_embeddings(file_path, lyrics, name, chorus)
-    os.remove(file_path)
-    return embeddings
-
-
-#@router.post("/post")
-# async def get_song_for_post_data(
-#     text: str = Form(...), image: UploadFile = File(...)
-# ):
-
-async def get_song_for_post_data(data: UploadPost):
-    return await get_embeddings_for_post(data)
+    return ImageToTextResponseModel(image_description=image_description)

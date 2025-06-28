@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from fastapi import UploadFile, File, Form
+from fastapi import UploadFile
 from typing import Optional
 
 
@@ -10,6 +10,10 @@ class TextToEmbeddingsModel(BaseModel):
 class EmbeddingsResponseModel(BaseModel):
     text: str
     embeddings: list[float]
+
+
+class ImageToTextResponseModel(BaseModel):
+    image_description: str
 
 
 class DistanceRequestModel(BaseModel):
@@ -36,6 +40,7 @@ class ImageToTextModel(BaseModel):
 
 class TextResponseModel(BaseModel):
     text: str
+
 
 class UploadSong(BaseModel):
     audio: UploadFile

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Instagram } from 'lucide-react';
 import FlowDiagram from '../components/FlowDiagram';
 
 function AboutPage({ onNavigate }) {
