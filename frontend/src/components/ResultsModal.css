@@ -51,41 +51,21 @@
   font-size: 0.9rem;
 }
 
-.match-info {
+.song-player {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: 120px;
+  align-items: center;
 }
 
-.match-percentage {
-  font-weight: 600;
-  color: black;
-  margin-bottom: 0.5rem;
-}
-
-.progress-bar {
-  width: 100px;
-  height: 6px;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background-color: black;
-  transition: width 0.3s ease;
-}
-
-.song-url {
-  color: black;
-  text-decoration: none;
-  font-size: 0.9em;
-  margin-top: 4px;
-  display: inline-block;
-}
-
-.song-url:hover {
-  text-decoration: underline;
+.player-btn {
+  border-radius: 50%;
+  width: 40;
+  height: 40;
+  border: none;
+  background: #eee;
+  cursor: pointer;
+  font-size: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8;
 }

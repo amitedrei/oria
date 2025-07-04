@@ -193,7 +193,6 @@ function UploadPage({ onNavigate }) {
 
       {showMusicLoader && (
         <MusicAnalysisLoader 
-          songs={[]}
           apiResponse={apiResponse}
           forceComplete={forceComplete}
           onComplete={(responseData) => {
