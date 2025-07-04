@@ -1,6 +1,6 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
-from models.song import Song
+from models import Song
 
 async def init_database(connection_string, db_name="music_data"):
     client = AsyncIOMotorClient(connection_string)

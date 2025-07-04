@@ -1,5 +1,5 @@
 import re
-
+from typing import Optional, Set
 from googletrans import Translator
 from huggingface_hub import hf_hub_download
 import fasttext
@@ -7,8 +7,8 @@ import json
 import asyncio
 from lyricsgenius import Genius
 import os
-import requests
 import time
+import copy
 
 lang_model_path = hf_hub_download(repo_id="facebook/fasttext-language-identification", filename="model.bin")
 
@@ -50,7 +50,7 @@ class LyricsHandler:
         return await self.__translator.translate(text, **params)
 
     async def __determine_languages(self, text: str, splited: bool = False, google_format: bool = True):
-        languages = set()
+        languages = list()
 
         if isinstance(text, list) or isinstance(text, set):
             tasks = [self.__determine_languages(entry, splited, google_format) for entry in text]
@@ -68,15 +68,15 @@ class LyricsHandler:
                 label = await asyncio.to_thread(self.__class__.__lang_model.predict, entry)
                 label = label[0][0].replace('__label__', '')
                 label = self.__class__.__translate_labels[label] if google_format else label
-                if label:
-                    languages.add(label)
+                if label and label not in languages:
+                    languages.append(label)
 
             except Exception as e:
                 continue
 
         en_label = 'en' if google_format else 'eng_Latn'
         if en_label not in languages and re.match(r"^[a-zA-Z0-9\(\)\s]*$", text):
-            languages.add(en_label)
+            languages.append(en_label)
 
         return languages
 
@@ -141,9 +141,12 @@ class LyricsHandler:
 
                     if data:
                         lyrics = data.lyrics.splitlines()
-                        if lyrics and '[' in lyrics[0]:
-                            lyrics[0] = lyrics[0][lyrics[0].find('['):]
+                        if lyrics:
+                            start = lyrics[0].find('[')
+                            start = start if start != -1 else 0
+                            lyrics[0] = lyrics[0][start:]
 
+                        lyrics = [line.strip() for line in lyrics]
                         lyrics = '\n'.join(lyrics)
                         return lyrics
 
@@ -156,11 +159,80 @@ class LyricsHandler:
 
         return ""
 
-    async def find_song(self, song):
+    async def __get_chorus(self, eng_lyrics: str):
+        sections = re.split(r'\n\s*\n+', eng_lyrics.strip())
+        list_sections = [section.splitlines() for section in sections] 
+        sanitzed_lyrics_list = []
+
+        for i in range(len(sections)):
+            res = sections[i]
+            if sections[i].startswith('['):
+                res = '\n'.join(sections[i].splitlines()[1:])
+
+            sanitzed_lyrics_list.append(res)
+            sanitized_lyrics = '\n'.join(sanitzed_lyrics_list)
+
+        # Check by chorus
+        for section in list_sections:
+            if section:
+                first_line = section[0].strip().lower()
+                first_line = re.sub(r'(\[.*?)ditty(.*?\])', r'\1chorus\2', first_line, flags=re.IGNORECASE)
+                first_line = re.sub(r'(\[.*?)choir(.*?\])', r'\1chorus\2', first_line, flags=re.IGNORECASE)
+                first_line = re.sub(r'(\[.*?)refrain(.*?\])', r'\1chorus\2', first_line, flags=re.IGNORECASE)
+
+                if re.search(r'\[.*chorus.*\]', first_line) and not re.search(r'\bpre[-\s]*chorus', first_line):
+                    return sanitized_lyrics, '\n'.join(section[1:])
+        
+        if len(set(sanitzed_lyrics_list)) != len(sanitzed_lyrics_list):
+            sections_sorted = sorted(sanitzed_lyrics_list)
+            
+            for index, entry in enumerate(sections_sorted):
+                if not entry.strip():
+                    continue
+
+                if index >= (len(sections_sorted) - 1):
+                    break
+
+                if entry == sections_sorted[index + 1]:
+                    return sanitized_lyrics, entry
+
+        return sanitized_lyrics, sanitized_lyrics
+
+    async def find_song(self, song) -> bool:
         result = await self.__sanitize_song_name(song['name'], song['artists'])
         song['sname'] = result['name']
         song['sartists'] = result['artists']
-        return await self.__get_song_lyrics(song)
+
+        try:
+            song['embedding_sname'] = (await self.__translate(song['sname'])).text
+        except Exception as e:
+            song['embedding_sname'] = song['sname']
+
+        
+        src_lyrics = await self.__get_song_lyrics(song)
+        if not src_lyrics:
+            return False
+        
+        langs = await self.__determine_languages(' '.join(src_lyrics.splitlines()))
+        parameters = {}
+        if langs:
+            parameters['src'] = langs[0]
+
+        try:
+            lyrics = (await self.__translate(text=src_lyrics, **parameters)).text
+        except Exception as e:
+            print(e)
+            lyrics = src_lyrics
+
+        try:
+            lyrics, chorus =  await self.__get_chorus(lyrics)
+            song['chorus'] = chorus
+
+        except:
+            song['chorus'] = lyrics
+
+        song['lyrics'] = lyrics
+        return True
 
     async def find_songs(self, songs):
         tasks = []

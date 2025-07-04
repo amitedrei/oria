@@ -1,12 +1,40 @@
-from models.song import Song
+from models import Song
 from typing import List, Dict, Any, Union, AsyncIterator
 
 class SongService:
-    @staticmethod
-    async def add_songs(songs_data: Dict[str, Dict[str, Any]]) -> bool:
-        try:
-            songs = [Song(**{'id': song_id, **song_data}) for song_id, song_data in songs_data.items()]
+    async def sanitize_songs(songs: List[Song]) -> List[Song]:
+        if not songs:
+            return []
+        
+        snames = [song.sname for song in songs]
+        
+        existing_songs = await Song.find(
+            {"sname": {"$in": snames}}
+        ).to_list()
+        
+        existing_identifiers = set()
+        for existing_song in existing_songs:
+            artists_key = tuple(sorted([artist.lower() for artist in existing_song.artists]))
+            existing_identifiers.add((existing_song.sname, artists_key))
+            
+            existing_identifiers.add((existing_song.sname, tuple(existing_song.chorus_embedding)))
+        
+        unique_songs = []
+        for song in songs:
+            song_artists_key = tuple(sorted([artist.lower() for artist in song.artists]))
+            song_chorus_key = tuple(song.chorus_embedding)
+            
+            if ((song.sname, song_artists_key) not in existing_identifiers and 
+                (song.sname, song_chorus_key) not in existing_identifiers):
+                unique_songs.append(song)
+        
+        return unique_songs
 
+    @classmethod
+    async def add_songs(cls, songs_data: Dict[str, Dict[str, Any]]) -> bool:
+        try:
+            songs = [Song(**{'song_id': song_id, **song_data}) for song_id, song_data in songs_data.items()]
+            songs = await cls.sanitize_songs(songs)
             if songs:
                 await Song.insert_many(songs)
             return True
@@ -38,10 +66,10 @@ class SongService:
             song_ids = list(songs.keys())
 
             existing_query = await Song.find(
-                {"source": source, "_id": {"$in": song_ids}}
+                {"source": source, "song_id": {"$in": song_ids}}
             ).to_list()
 
-            existing_ids = {song.id for song in existing_query}
+            existing_ids = {song.song_id for song in existing_query}
 
             for song_id, song in songs.items():
                 sub_key = 'exists' if song_id in existing_ids else 'new'
@@ -61,7 +89,7 @@ class SongService:
             await Song.find(
                 {
                     "source": source,
-                    "_id": {"$nin": list(good_song_ids)}
+                    "song_id": {"$nin": list(good_song_ids)}
                 }
             ).delete_many()
 

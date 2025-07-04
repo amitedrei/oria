@@ -1,23 +1,41 @@
 from beanie import Document, Indexed
 from typing import List, Set, Optional
-from pydantic import Field
-
+from pydantic import Field, ConfigDict
+from pymongo import IndexModel
+from bson import ObjectId
 
 class Song(Document):
-    id: str
+    id: ObjectId = Field(default_factory=lambda: ObjectId(), primary_field=True)
+    song_id: str
     source: str
     name: str
+    sname: str
     artists: List[str]
-    url: Indexed(str, unique=True)  # URL still unique
+    url: str
     thumbnail: str
-    embedding: List[float]
     playlists: Set[str]
+    name_embedding: List[float]
+    #lyrics: str
+    #lyrics_embedding: List[float]
+    chorus: str
+    chorus_embedding: List[float]
+    #mood_embedding: Optional[List[float]] = None
+    genre: Optional[str] = None
+    
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     class Settings:
-        name = "songs"
+        name = "songs_v5"
         indexes = [
-            [("id", 1), ("source", 1)],  # Compound index for id+source uniqueness
+            IndexModel(
+                [("song_id"), ("source")],
+                unique=True
+            ),
+            IndexModel(
+                [("url")],
+                unique=True
+            )
         ]
 
     @classmethod
@@ -26,6 +44,7 @@ class Song(Document):
 
     @classmethod
     def validate_playlists(cls, v):
-        if v is None:
-            return set()
+        if not isinstance(v, set):
+            return set(v)
+
         return v
