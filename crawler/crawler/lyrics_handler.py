@@ -172,7 +172,6 @@ class LyricsHandler:
             sanitzed_lyrics_list.append(res)
             sanitized_lyrics = '\n'.join(sanitzed_lyrics_list)
 
-        # Check by chorus
         for section in list_sections:
             if section:
                 first_line = section[0].strip().lower()

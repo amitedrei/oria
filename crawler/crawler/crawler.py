@@ -189,8 +189,8 @@ class Crawler:
             del form_data
 
         if embeddings:             
-            song['name_embedding'] = embeddings[0]
-            song['chorus_embedding'] = embeddings[1]
+            song['name_embedding'] = embeddings[0]['embeddings']
+            song['chorus_embedding'] = embeddings[1]['embeddings']
             return
                 
             

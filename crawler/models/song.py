@@ -15,13 +15,8 @@ class Song(Document):
     thumbnail: str
     playlists: Set[str]
     name_embedding: List[float]
-    #lyrics: str
-    #lyrics_embedding: List[float]
     chorus: str
     chorus_embedding: List[float]
-    #mood_embedding: Optional[List[float]] = None
-    genre: Optional[str] = None
-    
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
