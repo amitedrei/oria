@@ -12,4 +12,35 @@ crawlers:
       - 'RDCLAK5uy_kmq8ZD0NbHbKkZZ6frtlEjd8khfeZrAd0' # Afrobeats Now
       - 'RDCLAK5uy_mfdqvCAl8wodlx2P2_Ai2gNkiRDAufkkI' # Happy Pop Hits
       - 'RDCLAK5uy_mkEwQuegHYB8_aAzBO8Q__6gGoaFblISw' # Feel-Good Hip Hop and R&B
-interval_days: 1
+      - 'RDCLAK5uy_mjFIQx6np0uEk0EFQnkGFxqR3OMxReYv0' # Hip-Hop Energy
+      - 'RDCLAK5uy_lVm93MPGWY2gMYbeUHn2Y5HnRNRzMbQfM' # Lose Yourself
+      - 'RDCLAK5uy_kP2172rQNb3KFXz880xp6M98R_ME5CIKA' # Hip-Hop Classics
+      - 'RDCLAK5uy_kLWIr9gv1XLlPbaDS965-Db4TrBoUTxQ8' # Chroma: Today's Dance Hits
+      - 'RDCLAK5uy_k6PkYWus1Mt-aKrbb0Ne8SkA2BgAk1Yy4' # Dance Hits
+      - 'RDCLAK5uy_kPqJ_FiGk-lbXtgM4IF42uokskSJZiVTI' # Cardio Pop
+      - 'RDCLAK5uy_lGEOjy5U8xV41C8_LyqNnAZKOH6sGyutI' # Bubble Pop
+      - 'RDCLAK5uy_mVJ3RRi_YBfUJnZnQxLAedQQcXHujbUcg' # Pump-Up Pop
+      - 'RDCLAK5uy_nfs_t4FUu00E5ED6lveEBBX1VMYe1mFjk' # Dance Pop Bangers
+      - 'RDCLAK5uy_mu-BhJj3yO1OXEMzahs_aJVtNWJwAwFEE' # Highline: Today's R&B Hits
+      - 'RDCLAK5uy_lBGRuQnsG37Akr1CY4SxL0VWFbPrbO4gs' # On Everything: Today's Hip-Hop Hits
+      - 'RDCLAK5uy_lulnjm_yFic87Trd2WpUSUZilrTFVBGgc' # R&B Men of Today
+      - 'RDCLAK5uy_lf4wLV2b5cb2gsfuBM42Ng8eCoXv6no5w' # Today's Country
+      - 'RDCLAK5uy_m0Nsi5Jnn_g6qbvc7fywPRhEv1qN0PcMM' # Today's Indie Hits
+      - 'RDCLAK5uy_lvFH0QOipIBy7eD-bKRQmuZ_0hwgGD09E' # Today's Samba
+      - 'RDCLAK5uy_k5vcGRXixxemtzK1eKDS7BeHys7mvYOdk' # Maximum Decibels: Today's Rock Hits
+      - 'RDCLAK5uy_kQmVjdr90p2onIIAnijgU8u9iUUAOXM2I' # Today's Smooth Jazz
+      - 'RDCLAK5uy_kVSTOS9s3ujDERvOSfk0OOhs6VlETYVfg' # Today's R&B Christmas
+      - 'RDCLAK5uy_muPPezCrTrwoL7Ep_9a69YkIaBjsyKTg0' # City Pop: Today
+      - 'RDCLAK5uy_lpDndrjgkdnk6rdJ2-dpwdb41Mt4caq8s' # Today’s Club Sounds
+      - 'RDCLAK5uy_mvPJO7smbmUuPjfFs5gEW0e0sIAJ1ngDo' # Today's Pop
+      - 'RDCLAK5uy_la_vISXt1T4mKZhhaYKuLiig6JC21JvqY' # Today's Happy Pop
+      - 'RDCLAK5uy_nmS3YoxSwVVQk9lEQJ0UX4ZCjXsW_psU8' # Pop's Biggest Hits
+      - 'RDCLAK5uy_lrj9qy29eJKUUvkLFw56PiEHq07rDHwkU' # Country Hits
+      - 'RDCLAK5uy_l5vsK_hF93SboJt2sqZ94fLp-aE8aO9Tw' # The Happiest Pop Hits
+      - 'RDCLAK5uy_l6kmbwVnzKyu31exvtuxnFkjswnNgI6Uw' # Teen Pop Hits
+      - 'RDCLAK5uy_mgHrXs_5F6wPwPFA47S8yrzCfjCi4AXDE' # All-Time Alt
+      - 'RDCLAK5uy_nQkPLhMF6chdzKSlWdX8NHMrLVpdci-eU' # The Hits: '90s
+      - 'RDCLAK5uy_k3ZZMbcC_yMLnKyto6L54zeVkj7Yytk3g' # Today's Hardstyle
+
+
+  interval_days: 1

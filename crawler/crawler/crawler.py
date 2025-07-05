@@ -3,9 +3,10 @@ import json
 from abc import ABC, abstractmethod
 import os
 import aiohttp
-from .lyrics_handler import LyricsHandler
+from crawler import LyricsHandler
 from services.song_service import SongService
 import json
+import time
 
 BACKEND_URL = os.getenv('BACKEND_URL') or 'http://localhost:8000'
 
@@ -34,10 +35,25 @@ class Crawler:
         self.source_name = source_name
 
     async def __set_session(self):
+
+        connector = aiohttp.TCPConnector(
+                    
+                )
+        
+        connector = aiohttp.TCPConnector(
+                    limit=10,           # Total connection pool size
+                    limit_per_host=2,   # Max connections per host
+                    keepalive_timeout=30,
+                    enable_cleanup_closed=True
+                )
+        
         session = aiohttp.ClientSession(headers={
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.159 Safari/537.36'
-        },
-        timeout=aiohttp.ClientTimeout(total=300))
+            },
+        timeout=aiohttp.ClientTimeout(total=300),
+        connector=connector
+        )
+
         return session
 
     @classmethod
@@ -66,10 +82,6 @@ class Crawler:
 
             self.session = None
 
-    @abstractmethod
-    async def __download_song(self, id, song):
-        pass
-
     @staticmethod
     async def __crawl_once():
         results = {}
@@ -84,42 +96,40 @@ class Crawler:
         await asyncio.gather(*tasks)
         tasks.clear()
         crawl_results = []
-
         for i in range(5):
             print(f'[Enumeration {i+1}]')
             print('[~] Tagging Songs')
             for index, crawler in enumerate(crawlers):
-                if len(crawl_results) < index+1:
+                if not i:
                     crawl_results.append(await SongService.tag_songs(crawler.get_source_name(), crawler.__get_results()))
                     new_songs = len(crawl_results[index]['new'])
                     total_songs = new_songs + len(crawl_results[index]['exists'])
 
-                    print(f'[~] `{crawler.get_source_name()}` Crawler Found {total_songs} Songs, Out Of them {new_songs} are new!')
+                    if total_songs:
+                        print(f'[~] `{crawler.get_source_name()}` Crawler Found {total_songs} Songs, Out Of them {new_songs} are new!')
 
-                    if not await SongService.remove_old_songs(crawler.get_source_name(), crawl_results[index]):
-                        print(f"[!] Couldn't Remove Old Songs For Source `{crawler.get_source_name()}`")
+                        if not await SongService.remove_old_songs(crawler.get_source_name(), crawl_results[index]):
+                            print(f"[!] Couldn't Remove Old Songs For Source `{crawler.get_source_name()}`")
 
-                    if not await SongService.update_existing_songs_playlists(crawler.get_source_name(), crawl_results[index]):
-                        print(f"[!] Couldn't Update Existing Songs For Source `{crawler.get_source_name()}`")
+                        if not await SongService.update_existing_songs_playlists(crawler.get_source_name(), crawl_results[index]):
+                            print(f"[!] Couldn't Update Existing Songs For Source `{crawler.get_source_name()}`")
 
                 else:
                     crawl_results[index] = await SongService.tag_songs(crawler.get_source_name(), crawl_results[index]['new'])
 
+                crawl_results[index]['new'] = dict(sorted(crawl_results[index]['new'].items(), key=lambda item: len(item[1]['name'])))
                
             print('[~] Getting Song Embeddings And Adding To DB')
             for index, crawler in enumerate(crawlers):
                 print(f"[ Adding `{crawler.get_source_name()}` Crawler's Songs ]")
                 await crawler.__crawlers_results_to_db(crawl_results[index]['new'])
 
-            print('')
             await asyncio.sleep(10)
 
     @classmethod
     async def crawl_all(cls):
-        while True:
-            await cls.__crawl_once()
-            print('Sleeping!')
-            await asyncio.sleep(cls.__interval)
+        await cls.__crawl_once()
+
 
     @abstractmethod
     async def get_playlists(self):
@@ -131,41 +141,59 @@ class Crawler:
 
     def get_source_name(self):
         return self.source_name
-
-    async def __get_song_embedding(self, song_id, song):
+    
+    async def __get_song_embedding(self, song_id, song, minimize_chorus=0, data=None):
         if 'lyrics' not in song:
-            song['lyrics'] = await Crawler.__lyrics_handler.find_song(song)
+            status = await Crawler.__lyrics_handler.find_song(song)
+            if not status:
+                return
 
-        if not song['lyrics']:
-            return
-
-        data = await self.__download_song(song_id, song)
-        if not data:
-            return
-
+        if not all(key in song for key in ['embedding_sname', 'chorus']):
+            return 
+        
         form_data = aiohttp.FormData()
-        form_data.add_field('audio',
-                            data['data'],
-                            filename=data['file_name'],
-                            content_type='audio/wav')
-        form_data.add_field('lyrics', song['lyrics'])
+        form_data.add_field('name', song['embedding_sname'])
 
-        embedding = []
+        chorus = ''
+        if minimize_chorus:
+            chorus_list = song['chorus'].replace('\n', ' ').split(' ')
+            for entry in chorus_list:
+                if (len(chorus) + len(entry) + 1) > minimize_chorus:
+                    break
+
+                chorus += f'{entry} '
+
+            chorus = chorus.strip()
+
+        else:
+            chorus = song['chorus']
+            
+        form_data.add_field('chorus', chorus)
+        
+        embeddings = []
+
         try:
             async with self.session.post(f"{BACKEND_URL}/data-transformers/song", data=form_data) as resp:
                 if resp.status == aiohttp.http.HTTPStatus.OK:
-                    embedding = json.loads(await resp.text())
-        except:
-            pass
+                    embeddings = json.loads(await resp.text())
+                
+            if not embeddings and minimize_chorus != 400:
+                minimize_chorus = minimize_chorus-50 if minimize_chorus else 450
+                return await self.__get_song_embedding(song_id, song, minimize_chorus, data=data)
+
+        except Exception as e:
+            print(f"Failed To talk with oriapp backend. Recevied -> {e}")
+            return
 
         finally:
-            del data
             del form_data
 
-        if embedding:
-            song['embedding'] = embedding
-            del song['lyrics']
-
+        if embeddings:             
+            song['name_embedding'] = embeddings[0]['embeddings']
+            song['chorus_embedding'] = embeddings[1]['embeddings']
+            return
+                
+            
     def _add_to_results(self, song_id, name, artists, url, thumbnail, playlists):
         song = {
             'source': self.source_name,
@@ -184,32 +212,31 @@ class Crawler:
 
         self.__results[song_id] = song
 
+    
     async def __crawlers_results_to_db(self, songs):
-        songs_per_batch = 5
+        songs_per_batch = 10
         tasks = []
         evaluated_songs = {}
         for index, (song_id, song) in enumerate(songs.items()):
-            if song_id != 'VcRc2DHHhoM':
-                continue
+            
             evaluated_songs[song_id] = song
             tasks.append(self.__get_song_embedding(song_id, song))
             if len(tasks) == songs_per_batch:
                 await asyncio.gather(*tasks)
 
-                # Add Only "Good" Songs
-                evaluated_songs = {song_id: song for song_id, song in evaluated_songs.items() if 'embedding' in song and song['embedding']}
+                evaluated_songs = {song_id: song for song_id, song in evaluated_songs.items() if 'name_embedding' in song and song['name_embedding']}
                 await SongService.add_songs(evaluated_songs)
                 tasks.clear()
                 evaluated_songs.clear()
+                await asyncio.sleep(0.3)
 
+            if index and not (index+1) % 10:
                 print(f'Checked {index+1} Songs out Of {len(songs)}')
-
 
         if tasks:
             await asyncio.gather(*tasks)
             evaluated_songs = {song_id: song for song_id, song in evaluated_songs.items() if 'embedding' in song and song['embedding']}
             await SongService.add_songs(evaluated_songs)
 
-
     def __get_results(self):
-        return self.__results.copy()
+        return self.__results

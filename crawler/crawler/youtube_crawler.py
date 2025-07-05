@@ -3,7 +3,6 @@ from abc import ABC
 from . import crawler
 import re
 import json
-from yt_dlp import YoutubeDL
 import asyncio
 import time
 
@@ -48,35 +47,6 @@ class YoutubeCrawler(crawler.Crawler):
             self.playlists.add(playlist_id)
 
         return True
-
-    async def _Crawler__download_song(self, song_id, song):
-        if not song_id or 'url' not in song or not song['url']:
-            return {}
-
-        try:
-            try:
-                with YoutubeDL(self.ydl_opts) as ydl:
-                    ydl.download([song['url']])
-            except:
-                time.sleep(5)
-                return await self._Crawler__download_song(song_id, song)
-
-            song_path = f"{output_dir}{song_id}.wav"
-            with open(song_path, 'rb') as q:
-                data = q.read()
-
-            while os.path.exists(song_path):
-                try:
-                    os.remove(song_path)
-                except:
-                    continue
-
-            return {'file_name':f"{song_id}.wav",'data':data}
-
-        except Exception as e:
-            raise e
-            return {}
-
 
     @staticmethod
     def __get_artist_name(song_data):
@@ -127,7 +97,7 @@ class YoutubeCrawler(crawler.Crawler):
         result = re.findall(r"'\\/browse',\s*params:\s*JSON.parse.*, data:\s*'(.*)'}", text)
         if not len(result):
             return {}
-
+        
         try:
             bytes_data = result[0].encode('utf-8').decode('unicode-escape').encode('latin1')
             result = json.loads(bytes_data)

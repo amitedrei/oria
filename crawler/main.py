@@ -34,11 +34,6 @@ async def set_crawlers():
     if not 'crawlers' in config:
         raise Exception('crawlers not configured in config')
 
-    if not 'interval_days' in config:
-        raise Exception('interval_days not configured in config')
-
-    crawler.Crawler.set_interval(config['interval_days'])
-
     if 'youtube' in config['crawlers']:
         crawlers['youtube'] = await set_youtube_crawler(config['crawlers']['youtube'])
 
@@ -48,11 +43,11 @@ async def main():
         config = yaml.safe_load(q)
 
     await db.init_database(os.getenv('MONGO_URL'), os.getenv('MONGO_DB'))
+    
     await set_crawlers()
 
     print('Crawling!')
     await crawler.Crawler.crawl_all()
-
     return 0
 
 if __name__ == '__main__':
