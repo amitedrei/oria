@@ -187,24 +187,38 @@ async def like_song(data: LikeSongRequestModel) -> None:
 
 async def unlike_song(data: LikeSongRequestModel) -> None:
     await mongodb.songs_collection.update_one(
-    { "_id": 1 },
+    {"_id": ObjectId(data.song_id)},
     [
         {
-        "$set": {
-            POSTS_EMBEDDING_FIELD: {
-            "$let": {
-                "vars": {
-                "index": { "$indexOfArray": [POSTS_EMBEDDING_FIELD, data.post_embedding] }
-                },
-                "in": {
-                "$concatArrays": [
-                    { "$slice": [POSTS_EMBEDDING_FIELD, 0, "$$index"] },
-                    { "$slice": [POSTS_EMBEDDING_FIELD, { "$add": ["$$index", 1] }, { "$size": POSTS_EMBEDDING_FIELD }] }
-                ]
+            "$set": {
+                POSTS_EMBEDDING_FIELD: {
+                    "$let": {
+                        "vars": {
+                            "index": {
+                                "$indexOfArray": [f"${POSTS_EMBEDDING_FIELD}", data.post_embedding]
+                            }
+                        },
+                        "in": {
+                            "$cond": [
+                                { "$eq": ["$$index", -1] },
+                                f"${POSTS_EMBEDDING_FIELD}",  # No match: return original
+                                {
+                                    "$concatArrays": [
+                                        { "$slice": [f"${POSTS_EMBEDDING_FIELD}", 0, "$$index"] },
+                                        {
+                                            "$slice": [
+                                                f"${POSTS_EMBEDDING_FIELD}",
+                                                { "$add": ["$$index", 1] },
+                                                { "$size": f"${POSTS_EMBEDDING_FIELD}" }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
                 }
             }
-            }
-        }
         }
     ]
     )

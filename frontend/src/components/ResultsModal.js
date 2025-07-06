@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import "./ResultsModal.css";
+import { FaHeart, FaRegHeart } from 'react-icons/fa'; 
 
 export default function ResultsModal({ isOpen, onClose, songsResponse }) {
   const sortedSongs = [...(songsResponse?.songs || [])].sort(
@@ -30,7 +31,7 @@ export default function ResultsModal({ isOpen, onClose, songsResponse }) {
 
       if (!response.ok) throw new Error(`Failed to ${newStatus} the song`);
 
-      setLikedSongs((prev) => ({ ...prev, [likeKey]: true }));
+      setLikedSongs((prev) => ({ ...prev, [likeKey]: !isLiked }));
     } catch (error) {
       console.error(`Error ${newStatus} song:`, error);
     }
@@ -46,42 +47,31 @@ export default function ResultsModal({ isOpen, onClose, songsResponse }) {
 
             return (
               <div key={song.id} className="song-result-item">
-                <div className="song-info">
-                  <div className="song-title">{song.name}</div>
-                  <div className="song-artist">{song.artists.join(", ")}</div>
+              <div className="song-info">
+                <div className="song-title">
+                <a
+                  href={song.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {song.name}
+                </a>
                 </div>
+                <div className="song-artist">{song.artists.join(", ")}</div>
+              </div>
 
-                <div className="song-player">
-                  <button
-                    onClick={() => window.open(song.url, "_blank")}
-                    className="player-btn"
-                    aria-label={`Open ${song.name} in new tab`}
-                  >
-                    ▶
-                  </button>
-                  <span className="song-percentage">{`${Math.round(
-                    song.percentage * 100
-                  )}%`}</span>
+              <div>
+                <span className="song-percentage">{`${Math.round(
+                song.percentage * 100
+                )}%`}</span>
 
-                  <button
-                    onClick={() => handleLike(song, isLiked)}
-                    className="like-btn"
-                    style={{
-                      marginLeft: 12,
-                      padding: "6px 14px",
-                      borderRadius: 8,
-                      background: isLiked ? "#888" : "#6200ea",
-                      color: "#fff",
-                      border: "none",
-                      cursor: isLiked ? "default" : "pointer",
-                      fontWeight: "bold",
-                      marginRight: 4,
-                      transition: "background 0.3s ease",
-                    }}
-                  >
-                    {isLiked ? "Liked" : "Like!"}
-                  </button>
-                </div>
+                <button
+                onClick={() => handleLike(song, isLiked)}
+                className="like-btn"
+                >
+                {isLiked ? <FaHeart /> : <FaRegHeart />}
+                </button>
+              </div>
               </div>
             );
           })}
