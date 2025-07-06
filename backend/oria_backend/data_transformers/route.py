@@ -27,3 +27,13 @@ async def image_to_text(image: UploadFile = File(...)) -> ImageToTextResponseMod
         get_image_from_upload_file(image)
     )
     return ImageToTextResponseModel(image_description=image_description)
+
+@router.post("/song")
+async def get_songs_details(name: TextToEmbeddingsModel, chorus: TextToEmbeddingsModel):
+    name_embedding = get_embeddings(name.text)
+    chorus_embedding = get_embeddings(chorus.text)
+
+    return [
+        EmbeddingsResponseModel(text=name.text, embeddings=name_embedding),
+        EmbeddingsResponseModel(text=chorus.text, embeddings=chorus_embedding)
+    ]
