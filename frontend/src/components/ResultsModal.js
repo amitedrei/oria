@@ -50,31 +50,14 @@ export default function ResultsModal({ isOpen, onClose, songsResponse }) {
                   <div className="song-artist">{song.artists.join(", ")}</div>
                 </div>
 
-                <div
-                  className="song-player"
-                  style={{ display: "flex", alignItems: "center" }}
-                >
+                <div className="song-player">
                   <button
                     onClick={() => window.open(song.url, "_blank")}
                     className="player-btn"
                     aria-label={`Open ${song.name} in new tab`}
-                    style={{
-                      borderRadius: "50%",
-                      width: 40,
-                      height: 40,
-                      border: "none",
-                      background: "#eee",
-                      cursor: "pointer",
-                      fontSize: 20,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: 8,
-                    }}
                   >
                     ▶
                   </button>
-
                   <span className="song-percentage">{`${Math.round(
                     song.percentage * 100
                   )}%`}</span>

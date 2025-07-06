@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import './MusicAnalysisLoader.css';
 
 const MusicAnalysisLoader = ({ 
-  songs = [], 
   onComplete, 
   apiResponse = null, 
   forceComplete = false
@@ -291,10 +290,6 @@ const MusicAnalysisLoader = ({
       
       const resultSongIds = apiResponse.map(song => song.id);
       const currentVisibleNodes = visibleNodes.filter(n => n.visible);
-      
-      const visibleResultIds = currentVisibleNodes
-        .filter(n => resultSongIds.includes(n.id))
-        .map(n => n.id);
       
       const newResultSongs = apiResponse.filter(song => 
         !currentVisibleNodes.some(n => n.id === song.id)
