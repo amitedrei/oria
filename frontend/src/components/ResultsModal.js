@@ -58,7 +58,6 @@ export default function ResultsModal({ isOpen, onClose, songsResponse }) {
                   >
                     ▶
                   </button>
-                  <span>{`${Math.round(song.percentage * 100)}%`}</span>
                   <span className="song-percentage">{`${Math.round(
                     song.percentage * 100
                   )}%`}</span>
