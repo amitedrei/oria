@@ -44,6 +44,16 @@
   font-size: 1.1rem;
   margin-bottom: 0.25rem;
   color: black;
+  text-decoration: none;
+}
+
+.song-title a {
+  text-decoration: none;
+  cursor: pointer;
+  color: inherit;
+}
+.song-title a:hover {
+  text-decoration: underline;
 }
 
 .song-artist {
@@ -68,4 +78,16 @@
   align-items: center;
   justify-content: center;
   margin-right: 8;
+}
+
+.like-btn {
+  margin-left: 12;
+  padding: 6px 14px;
+  border-radius: 8;
+  background: transparent;
+  color: #000;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  margin-right: 4;
 }
