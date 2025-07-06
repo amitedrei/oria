@@ -184,3 +184,28 @@ async def like_song(data: LikeSongRequestModel) -> None:
             }
         },
     )
+
+async def unlike_song(data: LikeSongRequestModel) -> None:
+    await mongodb.songs_collection.update_one(
+    { "_id": 1 },
+    [
+        {
+        "$set": {
+            POSTS_EMBEDDING_FIELD: {
+            "$let": {
+                "vars": {
+                "index": { "$indexOfArray": [POSTS_EMBEDDING_FIELD, data.post_embedding] }
+                },
+                "in": {
+                "$concatArrays": [
+                    { "$slice": [POSTS_EMBEDDING_FIELD, 0, "$$index"] },
+                    { "$slice": [POSTS_EMBEDDING_FIELD, { "$add": ["$$index", 1] }, { "$size": POSTS_EMBEDDING_FIELD }] }
+                ]
+                }
+            }
+            }
+        }
+        }
+    ]
+    )
+

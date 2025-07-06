@@ -12,10 +12,11 @@ export default function ResultsModal({ isOpen, onClose, songsResponse }) {
   // Create a stable key based on the post_embedding for differentiating likes
   const postEmbeddingKey = JSON.stringify(songsResponse?.post_embedding || []);
 
-  const handleLike = async (song) => {
+  const handleLike = async (song, isLiked) => {
+    const newStatus = isLiked ? "unlike" : "like";
     const likeKey = `${song.id}_${postEmbeddingKey}`;
     try {
-      const response = await fetch("/songs/like", {
+      const response = await fetch(`/songs/${newStatus}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -27,11 +28,11 @@ export default function ResultsModal({ isOpen, onClose, songsResponse }) {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to like the song");
+      if (!response.ok) throw new Error(`Failed to ${newStatus} the song`);
 
       setLikedSongs((prev) => ({ ...prev, [likeKey]: true }));
     } catch (error) {
-      console.error("Error liking song:", error);
+      console.error(`Error ${newStatus} song:`, error);
     }
   };
 
@@ -63,8 +64,7 @@ export default function ResultsModal({ isOpen, onClose, songsResponse }) {
                   )}%`}</span>
 
                   <button
-                    onClick={() => handleLike(song)}
-                    disabled={isLiked}
+                    onClick={() => handleLike(song, isLiked)}
                     className="like-btn"
                     style={{
                       marginLeft: 12,
