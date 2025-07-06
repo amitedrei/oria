@@ -21,11 +21,16 @@ class MongoDB:
         self.close()
 
     @timed_cache(ttl_seconds=300)
-    async def get_all_songs(self, count: int | None = None) -> List[Dict[str, Any]]:
-        cursor = self.songs_collection.find()
+    async def get_all_songs(
+        self, count: int | None = None, projection: dict | None = None
+    ) -> List[Dict[str, Any]]:
+        cursor = self.songs_collection.find(projection=projection)
         if count is not None:
             cursor = cursor.limit(count)
         return await cursor.to_list(length=None)
+
+    async def update_song(self, song_id: str, update_data: Dict[str, Any]) -> None:
+        await self.songs_collection.update_one({"_id": song_id}, {"$set": update_data})
 
     def close(self):
         self.client.close()

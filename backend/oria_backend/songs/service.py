@@ -1,4 +1,5 @@
-from typing import Any, List
+from typing import Any
+from bson import ObjectId
 from loguru import logger
 from fastapi import UploadFile
 import numpy as np
@@ -6,21 +7,43 @@ from oria_backend.data_transformers.service import (
     extract_description_from_image,
     get_embeddings,
     get_image_from_upload_file,
-    get_refined_embeddings,
 )
-from oria_backend.songs.models import SongResponseModel
+from oria_backend.utils import normalize_vector, timed_cache
+from oria_backend.songs.models import (
+    LikeSongRequestModel,
+    SongResponseModel,
+    TopSongResponseModel,
+)
 from oria_backend.songs.mongo import mongodb
-from oria_backend.utils import get_n_closest_embedding_documents
 
 NAME_EMBEDDING_FIELD = "name_embedding"
-LYRICS_EMBEDDING_FIELD = "lyrics_embedding"
 CHORUS_EMBEDDING_FIELD = "chorus_embedding"
+POSTS_EMBEDDING_FIELD = "posts_embeddings"
+SONG_EMBEDDING_FIELD = "song_embedding"
+POST_DISTANCE_FIELD = "posts_distance"
 TOP_SONGS_AMOUNT = 5
-MAX_SONGS_CUT = 5
 
 
+SONG_NAME_WEIGHT = 0.9
+CHORUS_WEIGHT = 0.1
+POST_EMBEDDING_WEIGHT = 0.2
+SONG_EMBEDDING_WEIGHT = 0.8
+
+
+@timed_cache(ttl_seconds=300)
 async def get_all_songs(count):
-    labels = await mongodb.get_all_songs(count)
+    labels = await mongodb.get_all_songs(
+        count,
+        projection={
+            "_id": 1,
+            "name": 1,
+            "artists": 1,
+            "url": 1,
+            "source": 1,
+            "thumbnail": 1,
+            "playlists": 1,
+        },
+    )
     songs = []
     for label in labels:
         songs.append(
@@ -31,66 +54,72 @@ async def get_all_songs(count):
                 url=label["url"],
                 source=label["source"],
                 thumbnail=label["thumbnail"],
-                percentage=0,
                 distance=-1,
                 playlists=label.get("playlists", []),
-                distances={},
             )
         )
 
     return songs
 
 
-def build_field_distance_function(field: str, filter_category: str):
-    def distance_function(
-        songs: list[dict[str, Any]],
-        n: int,
-        query_embedding: list[float],
-    ) -> tuple[str, list[dict[str, Any]]]:
-        distance_field, closest_documents = get_n_closest_embedding_documents(
-            songs,
-            query_embedding,
-            embedding_field=field,
-            filter_category=filter_category,
+def get_n_closest_songs(
+    songs_documents: list[dict[str, Any]], post_embedding: list[float]
+):
+    normalized_post_embedding = normalize_vector(post_embedding)
+
+    for song in songs_documents:
+        name_embeddings = normalize_vector(song[NAME_EMBEDDING_FIELD])
+        chorus_embeddings = normalize_vector(song[CHORUS_EMBEDDING_FIELD])
+        song_embedding = (
+            name_embeddings * SONG_NAME_WEIGHT + chorus_embeddings * CHORUS_WEIGHT
         )
+        song_embedding = normalize_vector(song_embedding)
 
-        return distance_field, closest_documents[:n]
+        song_posts_embeddings = song.get(POSTS_EMBEDDING_FIELD, [])
+        normalized_posts_embeddings = []
+        for post_emb in song_posts_embeddings:
+            post_emb = normalize_vector(post_emb)
+            new_song_emb = (
+                post_emb * POST_EMBEDDING_WEIGHT
+                + song_embedding * SONG_EMBEDDING_WEIGHT
+            )
+            new_song_emb = normalize_vector(new_song_emb)
+            normalized_posts_embeddings.append(new_song_emb)
 
-    return distance_function
-
-
-def get_top_songs_by_field(
-    top_songs: list[dict[str, Any]],
-    embedding: list[float],
-    field: str,
-    description: str,
-    query_fields: list[str] = [
-        NAME_EMBEDDING_FIELD,
-    ],
-) -> tuple[list[str], list[dict[str, Any]]]:
-    distance_fields: list[str] = []
-    logger.info(f'Quering by {field}: "{description}"')
-    for i, song_filter_field in enumerate(query_fields):
-        filter_function = build_field_distance_function(song_filter_field, field)
-        cut_number = len(top_songs) // 2
-        if cut_number > MAX_SONGS_CUT:
-            cut_number = MAX_SONGS_CUT
-        distance_field, top_songs = filter_function(
-            top_songs,
-            max(cut_number, TOP_SONGS_AMOUNT),
-            embedding,
+        cosine_similarities = [
+            np.dot(song_post_embedding, normalized_post_embedding)
+            / (
+                np.linalg.norm(song_post_embedding)
+                * np.linalg.norm(normalized_post_embedding)
+            )
+            for song_post_embedding in normalized_posts_embeddings
+        ]
+        cosine_similarities.append(
+            np.dot(song_embedding, normalized_post_embedding)
+            / (
+                np.linalg.norm(song_embedding)
+                * np.linalg.norm(normalized_post_embedding)
+            )
         )
-        distance_fields.append(distance_field)
+        song[POST_DISTANCE_FIELD] = max(cosine_similarities)
+        song[SONG_EMBEDDING_FIELD] = song_embedding
+    return sorted(songs_documents, key=lambda x: x[POST_DISTANCE_FIELD], reverse=True)
 
-    logger.info(
-        f"Top songs after filtering by {field}: {[(song['name'], [song[distance_field] for distance_field in distance_fields]) for song in top_songs]}"
+
+async def find_top_songs(image: UploadFile, caption: str) -> TopSongResponseModel:
+    all_songs = await mongodb.get_all_songs(
+        projection={
+            NAME_EMBEDDING_FIELD: 1,
+            CHORUS_EMBEDDING_FIELD: 1,
+            POSTS_EMBEDDING_FIELD: 1,
+            "name": 1,
+            "artists": 1,
+            "url": 1,
+            "thumbnail": 1,
+            "source": 1,
+            "playlists": 1,
+        }
     )
-
-    return distance_fields, top_songs
-
-
-async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseModel]:
-    top_songs = await mongodb.get_all_songs()
     image_obj = get_image_from_upload_file(image)
     image_description = extract_description_from_image(image_obj)
     image_embedding = get_embeddings(image_description)
@@ -113,24 +142,12 @@ async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseMo
     else:
         combined_embeddings = image_embedding.tolist()
 
-    refined_embeddings = get_refined_embeddings(combined_embeddings)
-
     logger.info(f'Image description: "{image_description}"')
     logger.info(f'Caption: "{caption}"')
 
-    combined_distance_fields, top_songs = get_top_songs_by_field(
-        top_songs,
-        refined_embeddings,
-        "combined",
-        "combined_description",
-        query_fields=[
-            NAME_EMBEDDING_FIELD,
-        ],
-    )
+    top_songs = get_n_closest_songs(all_songs, combined_embeddings)
 
-    distance_fields = combined_distance_fields
-
-    return sorted(
+    top_songs = sorted(
         [
             SongResponseModel(
                 id=str(song["_id"]),
@@ -140,18 +157,30 @@ async def find_top_songs(image: UploadFile, caption: str) -> List[SongResponseMo
                 thumbnail=song["thumbnail"],
                 source=song["source"],
                 playlists=song["playlists"],
-                distances={field: song[field] for field in distance_fields},
-                distance=sum(song[field] for field in distance_fields if field in song)
-                / len(distance_fields)
-                if distance_fields
-                else -1,
-                percentage=sum(
-                    song[field] for field in distance_fields if field in song
-                )
-                / len(distance_fields),
+                distance=song[POST_DISTANCE_FIELD],
+                percentage=song[POST_DISTANCE_FIELD],
+                song_embedding=song[SONG_EMBEDDING_FIELD],
             )
             for song in top_songs
         ],
         key=lambda x: x.distance,
         reverse=True,
     )[:TOP_SONGS_AMOUNT]
+
+    return TopSongResponseModel(
+        songs=top_songs,
+        post_embedding=combined_embeddings,
+    )
+
+
+async def like_song(data: LikeSongRequestModel) -> None:
+    await mongodb.songs_collection.update_one(
+        {"_id": ObjectId(data.song_id)},
+        {
+            "$push": {
+                POSTS_EMBEDDING_FIELD: {
+                    "$each": [data.post_embedding],
+                }
+            }
+        },
+    )

@@ -1,7 +1,7 @@
 import { ArrowRight, Loader, X } from "lucide-react";
 import { useRef, useState } from "react";
-import ResultsModal from "../components/ResultsModal";
 import MusicAnalysisLoader from "../components/MusicAnalysisLoader";
+import ResultsModal from "../components/ResultsModal";
 
 function UploadPage({ onNavigate }) {
   const [dragActive, setDragActive] = useState(false);
@@ -9,7 +9,7 @@ function UploadPage({ onNavigate }) {
   const [additionalText, setAdditionalText] = useState("");
   const [alertMessage, setAlertMessage] = useState(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState();
   const [showMusicLoader, setShowMusicLoader] = useState(false);
   const [apiResponse, setApiResponse] = useState(null);
   const [forceComplete, setForceComplete] = useState(false);
@@ -101,8 +101,7 @@ function UploadPage({ onNavigate }) {
 
       const data = await response.json();
       setSearchResults(data);
-      setApiResponse(data);
-      
+      setApiResponse(data.songs);
     } catch (error) {
       setForceComplete(true);
       setTimeout(() => {
@@ -169,7 +168,11 @@ function UploadPage({ onNavigate }) {
         onChange={(e) => setAdditionalText(e.target.value)}
       />
 
-      <button className="button" onClick={handleSubmit} disabled={showMusicLoader}>
+      <button
+        className="button"
+        onClick={handleSubmit}
+        disabled={showMusicLoader}
+      >
         <span className="button-text">
           {showMusicLoader ? "processing..." : "continue"}
         </span>
@@ -207,7 +210,7 @@ function UploadPage({ onNavigate }) {
       <ResultsModal
         isOpen={showResultsModal}
         onClose={() => setShowResultsModal(false)}
-        songs={searchResults}
+        songsResponse={searchResults}
       />
     </div>
   );
