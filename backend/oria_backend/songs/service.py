@@ -177,7 +177,7 @@ async def like_song(data: LikeSongRequestModel) -> None:
     await mongodb.songs_collection.update_one(
         {"_id": ObjectId(data.song_id)},
         {
-            "$push": {
+            "$addToSet": {
                 POSTS_EMBEDDING_FIELD: {
                     "$each": [data.post_embedding],
                 }
@@ -185,41 +185,9 @@ async def like_song(data: LikeSongRequestModel) -> None:
         },
     )
 
+
 async def unlike_song(data: LikeSongRequestModel) -> None:
     await mongodb.songs_collection.update_one(
-    {"_id": ObjectId(data.song_id)},
-    [
-        {
-            "$set": {
-                POSTS_EMBEDDING_FIELD: {
-                    "$let": {
-                        "vars": {
-                            "index": {
-                                "$indexOfArray": [f"${POSTS_EMBEDDING_FIELD}", data.post_embedding]
-                            }
-                        },
-                        "in": {
-                            "$cond": [
-                                { "$eq": ["$$index", -1] },
-                                f"${POSTS_EMBEDDING_FIELD}",  # No match: return original
-                                {
-                                    "$concatArrays": [
-                                        { "$slice": [f"${POSTS_EMBEDDING_FIELD}", 0, "$$index"] },
-                                        {
-                                            "$slice": [
-                                                f"${POSTS_EMBEDDING_FIELD}",
-                                                { "$add": ["$$index", 1] },
-                                                { "$size": f"${POSTS_EMBEDDING_FIELD}" }
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        }
-    ]
+        {"_id": ObjectId(data.song_id)},
+        {"$pull": {POSTS_EMBEDDING_FIELD: data.post_embedding}},
     )
-
