@@ -5,7 +5,7 @@ function Header({ onNavigate }) {
     <header className="header">
         <title>ORIA</title>
       <div className="logo" onClick={() => onNavigate('upload')}>ORIA</div>
-      <div className="nav-link" onClick={() => onNavigate('about')}>who we are</div>
+      <div className="nav-link" onClick={() => onNavigate('about')}>About Us</div>
     </header>
   );
 }
